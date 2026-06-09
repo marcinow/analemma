@@ -28,7 +28,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
 | 10 | Theme toggle (dark default) | ✅ Done | 1 |
 | 11 | Language toggle (EN/PL) | ✅ Done | 3 |
-| 12 | Shareable URL state | 📋 Todo | 4, 5, 7, 10 |
+| 12 | Shareable URL state | ✅ Done | 4, 5, 7, 10 |
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
 
 ---
@@ -257,11 +257,21 @@ The controls bar is getting crowded. Make the **Location** and **Time** control 
 
 ## Issue 12 — Shareable URL state
 
-**Status:** 📋 Todo · **Depends on:** 4, 5, 7, 10 · **PRD:** FR‑16
+**Status:** ✅ Done · **Depends on:** 4, 5, 7, 10 · **PRD:** FR‑16
 
-- Serialize `{lat, lon, cityName, year, time, view, lang, theme, layers}` into the **URL hash**; parse and restore on load.
+- Serialize `{lat, lon, cityName, year, time, view, lang, theme, markers}` into the **URL hash**; parse and restore on load.
 
 **Done when:** the URL round-trips — opening a copied link in a fresh tab restores the exact view.
+
+### Delivered
+
+- **`updateHash()`** — called after every state-changing event (location select, manual coords, geolocation, time slider, view toggle, markers toggle, lang toggle, theme toggle); encodes `lat`, `lon`, `city`, `year`, `time` (LMST minutes), `view`, `lang`, `theme`, `markers` into the URL hash via `history.replaceState` (no page reload)
+- **`parseHash()`** — decodes the hash on load; validates lat/lon ranges; returns `null` on any invalid or missing hash so the page gracefully falls back to defaults
+- **Bootstrap block** — runs after `_slider`/`_readout` are defined and before the first `render()`; if a valid hash is present it sets all state variables (`_loc`, `_year`, `_view`, `_lang`, `_theme`, `_markersOn`, slider position), updates the DOM (i18n nodes, button labels, active classes, theme attribute) so the first render uses the restored state
+- **`YEAR` → `_year`** — the formerly constant year is now a `let` that can be restored from the hash; all `render()` calls use `_year`
+- **No hash on plain open** — if there is no hash fragment, `updateHash()` is never called during initialization, so opening the plain URL does not add a hash
+- **Partial / invalid hash** — a hash with only `lat`/`lon` (missing other params) uses sensible defaults for the rest; a hash with out-of-range coordinates is ignored and the page loads with the Warsaw default
+- **`test/issue12-shareable-url.mjs`**: 39 Playwright tests covering: no hash on plain load, hash written after location/time/view/lang/theme/markers changes, full round-trip (Paris · 08:00 · EoT · Polish · light · markers on → restored exactly in a fresh tab), partial hash (lat/lon only), and invalid hash fallback — all zero JS errors
 
 ## Issue 13 — Polish: touch, a11y, polar, attribution
 

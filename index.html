@@ -381,7 +381,7 @@ const SunCalc = (() => {
 
 // ── Default location ──────────────────────────────────────────────────────────
 const DEFAULT = { lat: 52.2297, lon: 21.0122, name: 'Warsaw' };
-const YEAR    = new Date().getFullYear();
+let _year     = new Date().getFullYear();
 const R2D     = 180 / Math.PI;
 
 // ── NOAA: Equation of Time + Declination ─────────────────────────────────────
@@ -698,6 +698,41 @@ const STRINGS = {
 let _lang = 'en';
 function t(key) { return STRINGS[_lang][key] ?? STRINGS.en[key]; }
 
+// ── URL hash state ─────────────────────────────────────────────────────────────
+function updateHash() {
+  const params = new URLSearchParams();
+  params.set('lat',     _loc.lat.toFixed(4));
+  params.set('lon',     _loc.lon.toFixed(4));
+  if (_loc.name) params.set('city', _loc.name);
+  params.set('year',    String(_year));
+  params.set('time',    String(parseInt(_slider.value, 10)));
+  params.set('view',    _view);
+  params.set('lang',    _lang);
+  params.set('theme',   _theme);
+  params.set('markers', _markersOn ? '1' : '0');
+  history.replaceState(null, '', '#' + params.toString());
+}
+
+function parseHash() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return null;
+  try {
+    const p   = new URLSearchParams(hash);
+    const lat = parseFloat(p.get('lat'));
+    const lon = parseFloat(p.get('lon'));
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return {
+      loc:         { lat, lon, name: p.get('city') || `${lat}°, ${lon}°` },
+      year:        parseInt(p.get('year') || '', 10) || new Date().getFullYear(),
+      lmstMinutes: Math.min(1439, Math.max(0, parseInt(p.get('time') || '720', 10))),
+      view:        p.get('view') === 'eot' ? 'eot' : 'sky',
+      lang:        p.get('lang') === 'pl' ? 'pl' : 'en',
+      theme:       p.get('theme') === 'light' ? 'light' : 'dark',
+      markers:     p.get('markers') === '1',
+    };
+  } catch { return null; }
+}
+
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -837,7 +872,7 @@ function drawMarkers(svg, pts, M, pw, ph, year, showMarkers = true) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
+function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = _year) {
   _loc = { lat, lon, name };
   const svg = document.getElementById('chart');
   svg.innerHTML = '';
@@ -1163,10 +1198,11 @@ function setupLocationControls() {
   const lonInput  = document.getElementById('lonInput');
   const geoBtn    = document.getElementById('geoBtn');
 
-  // Initialise inputs from DEFAULT
-  cityInput.value = DEFAULT.name;
-  latInput.value  = DEFAULT.lat.toFixed(4);
-  lonInput.value  = DEFAULT.lon.toFixed(4);
+  // Initialise inputs from current location (may have been set from URL hash)
+  cityInput.value = _loc.name;
+  latInput.value  = _loc.lat.toFixed(4);
+  lonInput.value  = _loc.lon.toFixed(4);
+  document.getElementById('locSummary').textContent = _loc.name;
 
   let activeIdx  = -1;
   let _matches   = [];   // selectable items (separator items excluded)
@@ -1178,7 +1214,8 @@ function setupLocationControls() {
     _pinned = false; _pinnedDoy = null;
     document.getElementById('info').style.display = 'none';
     document.getElementById('locSummary').textContent = name;
-    render({ lat, lon, name }, lmstHour, YEAR);
+    render({ lat, lon, name }, lmstHour, _year);
+    updateHash();
   }
 
   // sepAfter: insert an "online results" separator before this index (-1 = none)
@@ -1353,6 +1390,31 @@ function minutesToTimeStr(minutes) {
   return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
 }
 
+// ── Apply URL hash state (before first render) ────────────────────────────────
+{
+  const hs = parseHash();
+  if (hs) {
+    _loc       = hs.loc;
+    _year      = hs.year;
+    _view      = hs.view;
+    _lang      = hs.lang;
+    _theme     = hs.theme;
+    _markersOn = hs.markers;
+    _slider.value = String(hs.lmstMinutes);
+    const ts = minutesToTimeStr(hs.lmstMinutes);
+    _readout.textContent = ts;
+    document.getElementById('timeSummary').textContent = ts;
+    document.documentElement.dataset.theme = _theme;
+    document.documentElement.lang = _lang;
+    document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n); });
+    document.getElementById('cityInput').placeholder = t('loc.placeholder');
+    document.getElementById('btnLang').textContent   = t('lang.toggle');
+    document.getElementById('btnSky').classList.toggle('active', _view === 'sky');
+    document.getElementById('btnEot').classList.toggle('active', _view === 'eot');
+    document.getElementById('btnMarkers').classList.toggle('active', _markersOn);
+  }
+}
+
 _slider.addEventListener('input', () => {
   const minutes  = parseInt(_slider.value, 10);
   const lmstHour = minutes / 60;
@@ -1362,7 +1424,8 @@ _slider.addEventListener('input', () => {
   // Reset pin so the old panel doesn't show stale coordinates
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
-  render(_loc, lmstHour, YEAR);
+  render(_loc, lmstHour, _year);
+  updateHash();
 });
 
 // ── Fold/unfold control panels ────────────────────────────────────────────────
@@ -1387,7 +1450,8 @@ function applyLang() {
   document.getElementById('btnLang').textContent    = t('lang.toggle');
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
-  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+  render(_loc, parseInt(_slider.value, 10) / 60, _year);
+  updateHash();
 }
 
 function setupLangToggle() {
@@ -1405,11 +1469,12 @@ function setupThemeToggle() {
     document.documentElement.dataset.theme = _theme;
     btn.textContent = _theme === 'dark' ? '☀' : '🌙';
     localStorage.setItem('theme', _theme);
-    render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+    render(_loc, parseInt(_slider.value, 10) / 60, _year);
+    updateHash();
   });
 }
 
-render();
+render(_loc, parseInt(_slider.value, 10) / 60);
 setupInteraction();
 setupLocationControls();
 setupFolds();
@@ -1424,7 +1489,8 @@ document.getElementById('btnSky').addEventListener('click', () => {
   document.getElementById('btnEot').classList.remove('active');
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
-  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+  render(_loc, parseInt(_slider.value, 10) / 60, _year);
+  updateHash();
 });
 document.getElementById('btnEot').addEventListener('click', () => {
   if (_view === 'eot') return;
@@ -1433,12 +1499,14 @@ document.getElementById('btnEot').addEventListener('click', () => {
   document.getElementById('btnSky').classList.remove('active');
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
-  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+  render(_loc, parseInt(_slider.value, 10) / 60, _year);
+  updateHash();
 });
 document.getElementById('btnMarkers').addEventListener('click', () => {
   _markersOn = !_markersOn;
   document.getElementById('btnMarkers').classList.toggle('active', _markersOn);
-  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+  render(_loc, parseInt(_slider.value, 10) / 60, _year);
+  updateHash();
 });
 </script>
 </body>
