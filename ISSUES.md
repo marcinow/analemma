@@ -26,7 +26,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 8 | Markers + "today" | ✅ Done | 1 |
 | 8a | Fold/unfold Location & Time control lines | ✅ Done | 4, 5 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
-| 10 | Theme toggle (dark default) | 📋 Todo | 1 |
+| 10 | Theme toggle (dark default) | ✅ Done | 1 |
 | 11 | Language toggle (EN/PL) | ✅ Done | 3 |
 | 12 | Shareable URL state | 📋 Todo | 4, 5, 7, 10 |
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
@@ -221,11 +221,21 @@ The controls bar is getting crowded. Make the **Location** and **Time** control 
 
 ## Issue 10 — Theme toggle (dark default)
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑15, §7
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑15, §7
 
 - Theme via **CSS custom properties**; **dark/light toggle, dark default**, persisted in `localStorage`.
 
 **Done when:** toggling restyles the whole page with good contrast in both themes and persists across reloads.
+
+### Delivered
+
+- **CSS custom properties for both themes** — all colour tokens (`--bg`, `--surface`, `--border`, `--text`, `--muted`, `--accent`, `--curve`, `--dot`) live in `:root` (dark defaults) and are overridden by `html[data-theme="light"]`; adding the attribute on `<html>` is the only DOM change needed to recolour the entire page
+- **Three additional themed tokens** — `--sky-grad-top` / `--sky-grad-bot` (sky gradient colours, dark navy → light sky-blue) and `--axis-emph` (the horizon/equator emphasis line, dark navy → soft steel-blue), so every colour in the SVG is now theme-aware
+- **`--shadow` token** — `rgba(0,0,0,.55)` in dark, `rgba(0,0,50,.18)` in light; applied to the info panel and city dropdown box-shadows
+- **`cssVar(name)` helper** — reads a CSS custom property at call time via `getComputedStyle`; used in the SVG renderer to replace the three previously hardcoded hex colours (`#06111f`, `#0b1d31`, `#1e3a5f`) so re-renders pick up the active theme
+- **`#btnTheme` button** — placed in `<header>` before `#btnLang` (both share a combined button style rule); shows `☀` when dark (click → switch to light) and `🌙` when light (click → switch to dark)
+- **`_theme` state + `setupThemeToggle()`** — `_theme` is initialised from `localStorage.getItem('theme') || 'dark'` and `html.dataset.theme` is set before the first `render()` call, so the correct gradient colours are used on the very first paint; clicking the button flips `_theme`, updates `data-theme`, updates button text, writes to `localStorage`, and triggers a full re-render
+- **`test/issue10-theme-toggle.mjs`**: 11 Playwright test groups (31 assertions) covering default dark state, button placement, SVG renders in dark, toggle to light (CSS vars all differ), SVG re-renders in light, localStorage persistence, reload restores light, toggle back to dark, dark restored on reload, other controls (EoT + language) unaffected, and zero JS errors throughout
 
 ## Issue 11 — Language toggle (EN/PL)
 

@@ -4,10 +4,11 @@
     "playwright": "^1.60.0"
   },
   "scripts": {
-    "test": "node test/issue7-eot-toggle.mjs && node test/issue8-markers.mjs && node test/issue8a-fold-controls.mjs && node test/issue11-language-toggle.mjs",
+    "test": "node test/issue7-eot-toggle.mjs && node test/issue8-markers.mjs && node test/issue8a-fold-controls.mjs && node test/issue10-theme-toggle.mjs && node test/issue11-language-toggle.mjs",
     "test:7": "node test/issue7-eot-toggle.mjs",
     "test:8": "node test/issue8-markers.mjs",
     "test:8a": "node test/issue8a-fold-controls.mjs",
+    "test:10": "node test/issue10-theme-toggle.mjs",
     "test:11": "node test/issue11-language-toggle.mjs"
   }
 }
