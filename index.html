@@ -86,6 +86,29 @@
     .info-moon  { color: var(--muted); margin-top: .2rem; font-size: .77rem; }
     .info-polar { color: var(--muted); font-style: italic; }
 
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .45rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .8rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    #controls label { white-space: nowrap; }
+    #timeSlider {
+      flex: 1;
+      max-width: 320px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    #timeReadout {
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      min-width: 3em;
+    }
+
     footer {
       padding: .45rem 1.5rem;
       border-top: 1px solid var(--border);
@@ -100,6 +123,12 @@
   <h1>Analemma</h1>
   <span id="subtitle"></span>
 </header>
+
+<div id="controls">
+  <label for="timeSlider">Time (LMST)</label>
+  <input type="range" id="timeSlider" min="0" max="1439" step="1" value="720">
+  <span id="timeReadout">12:00</span>
+</div>
 
 <main>
   <svg id="chart" viewBox="0 0 660 540" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -395,7 +424,7 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
   const h = Math.floor(lmstHour), mm = Math.round((lmstHour % 1) * 60);
   const timeStr = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
   document.getElementById('subtitle').textContent =
-    `${name} · ${year} · LMST ${timeStr} (solar noon)`;
+    `${name} · ${year} · LMST ${timeStr}`;
 }
 
 // ── Interaction ───────────────────────────────────────────────────────────────
@@ -525,6 +554,26 @@ function setupInteraction() {
     if (!_pinned) hideInfo();
   });
 }
+
+// ── Time slider ───────────────────────────────────────────────────────────────
+const _slider  = document.getElementById('timeSlider');
+const _readout = document.getElementById('timeReadout');
+
+function minutesToTimeStr(minutes) {
+  const hh = Math.floor(minutes / 60) % 24;
+  const mm = minutes % 60;
+  return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+}
+
+_slider.addEventListener('input', () => {
+  const minutes  = parseInt(_slider.value, 10);
+  const lmstHour = minutes / 60;
+  _readout.textContent = minutesToTimeStr(minutes);
+  // Reset pin so the old panel doesn't show stale coordinates
+  _pinned = false; _pinnedDoy = null;
+  document.getElementById('info').style.display = 'none';
+  render(_loc, lmstHour, YEAR);
+});
 
 render();
 setupInteraction();

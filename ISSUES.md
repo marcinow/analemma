@@ -19,7 +19,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 1 | Walking skeleton: static analemma | ✅ Done | — |
 | 2 | Hover/tap a point → date | ✅ Done | 1 |
 | 3 | Rich per-day info panel | ✅ Done | 2 |
-| 4 | Time-of-day slider | 📋 Todo | 1 |
+| 4 | Time-of-day slider | ✅ Done | 1 |
 | 5 | Location: bundled cities + manual lat/long | 📋 Todo | 1 |
 | 6 | Location: live geocoding search | 📋 Todo | 5 |
 | 7 | EoT × Declination projection toggle | 📋 Todo | 1 |
@@ -104,11 +104,19 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 4 — Time-of-day slider
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑3
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑3
 
 - Add a **00:00–24:00 slider** (default 12:00) with a live readout that re-samples the curve at the chosen local mean solar time.
 
 **Done when:** dragging the slider visibly reshapes/tilts the figure‑8 in real time.
+
+### Delivered
+
+- **Time (LMST) slider** in a controls bar between header and SVG; range 00:00–24:00 in 1-minute steps, default 12:00
+- **Live readout** (`HH:MM`) updates as the thumb moves; header subtitle also reflects the current time
+- **Full re-render on input**: `buildPoints()` is called with the new `lmstHour`, so the curve, dots, axes, and "today" marker all update instantly
+- **Pinned tooltip reset** on slider change so a stale panel from a previous time doesn't linger
+- Verified: at 12:00 the classic symmetric figure-8 near south; at 06:00 the curve tilts sharply east and sits near the horizon — correct astronomical behaviour
 
 ## Issue 5 — Location: bundled cities + manual lat/long
 
