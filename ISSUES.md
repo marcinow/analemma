@@ -17,7 +17,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | # | Issue | Status | Depends on |
 |---|-------|--------|------------|
 | 1 | Walking skeleton: static analemma | ✅ Done | — |
-| 2 | Hover/tap a point → date | 📋 Todo | 1 |
+| 2 | Hover/tap a point → date | ✅ Done | 1 |
 | 3 | Rich per-day info panel | 📋 Todo | 2 |
 | 4 | Time-of-day slider | 📋 Todo | 1 |
 | 5 | Location: bundled cities + manual lat/long | 📋 Todo | 1 |
@@ -62,12 +62,26 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 2 — Hover/tap a point → date
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑5 (date only), FR‑17
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑5 (date only), FR‑17
 
 - On `pointermove`/`pointerdown`, find the nearest daily sample within a pixel threshold; highlight it.
 - Show a minimal info panel with the **localized date**; tap pins it on touch.
 
 **Done when:** moving along the curve updates the highlighted point and shows the correct date; tap works on touch.
+
+### Delivered
+
+- **Hover** moves an amber ring along the nearest daily sample; tooltip shows the full date (e.g. "June 9")
+- **Click/tap pins** the tooltip (amber border on the panel, ring stays); clicking the same point unpins, clicking elsewhere moves the pin
+- **Touch** works the same way — `pointerdown` + `preventDefault()` prevents scroll interference
+- Coordinate math uses `getScreenCTM().inverse()` so it's correct regardless of how the SVG is scaled by CSS
+- Threshold is 28 SVG units (~28px at 1:1 scale) — wide enough to be comfortable, tight enough not to snap from far away
+
+### Verify
+
+1. Hovering anywhere near the curve shows a date and highlights the nearest point with an amber ring
+2. Clicking pins it (tooltip gets an amber border); clicking the same point unpins
+3. Works on touch — no page scroll when tapping on the chart
 
 ## Issue 3 — Rich per-day info panel
 
