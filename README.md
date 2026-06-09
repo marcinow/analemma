@@ -9,7 +9,7 @@
 * Implement with Sonnet model
 
 ``` implement Issue N ```
-``` write down playwright tests for issue N to a separate file in test folder so it coule be run later to detect regressions, update package.json file to be able to run tests individaully per issue and for all issues at once ```
+``` write down playwright tests for issue N to a separate file in test folder so it could be run later to detect regressions, update package.json file to be able to run tests individaully per issue and for all issues at once ```
 ``` mark Issue N as Done, also add what was delivered to the issue description in ISSUES.md file ```
 - commit after each issue is implemeted (makes easy to navigate between implemenation phases or to discard incorrect implementation)
 
