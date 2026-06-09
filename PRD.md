@@ -70,6 +70,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 - **FR‑15 (Theme):** **Dark/light** toggle, **dark by default**; persisted.
 - **FR‑16 (Shareable URL):** Encode `{lat, lon, cityName, year, time, view, lang, theme, layers}` in the URL hash; parse and restore on load so a link reopens the exact view.
 - **FR‑17 (Touch support):** Full pointer/touch support; responsive SVG that scales to the viewport.
+- **FR‑18 (Collapsible controls):** The **Location** and **Time** control lines are each individually **collapsible** behind a labeled disclosure header, **folded by default**, so the page opens compact. A folded header reflects its current value (city name / LMST) for orientation; toggles are keyboard‑operable (`aria-expanded`).
 
 ## 5. Astronomy & computation
 
@@ -85,7 +86,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 ## 6. UI / UX
 
 - **Header:** title; language toggle; theme toggle.
-- **Controls:** location (city autocomplete + live search + manual lat/long + optional geolocation); year selector; time‑of‑day slider with readout; view toggle (Sky ↔ EoT); **Markers toggle** (month ticks + solstice/equinox markers, off by default); layer toggles (golden‑hour/twilight bands). The "today" marker is always visible and has no toggle.
+- **Controls:** location (city autocomplete + live search + manual lat/long + optional geolocation); year selector; time‑of‑day slider with readout; view toggle (Sky ↔ EoT); **Markers toggle** (month ticks + solstice/equinox markers, off by default); layer toggles (golden‑hour/twilight bands). The **Location** and **Time** lines are individually **collapsible**, folded by default (FR‑18). The "today" marker is always visible and has no toggle.
 - **Main canvas:** responsive inline **SVG** with the analemma, horizon line, axes/labels, markers, and the highlighted point.
 - **Info panel:** per‑date details (see FR‑5); pinned on tap.
 - **Footer:** attribution (SunCalc, Open‑Meteo) and accuracy caveat.

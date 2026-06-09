@@ -86,7 +86,7 @@
     .info-moon  { color: var(--muted); margin-top: .2rem; font-size: .77rem; }
     .info-polar { color: var(--muted); font-style: italic; }
 
-    #controls {
+    #ctrl-bar {
       display: flex;
       align-items: center;
       gap: .75rem;
@@ -96,7 +96,36 @@
       color: var(--muted);
       flex-wrap: wrap;
     }
-    #controls label { white-space: nowrap; }
+    .ctrl-toggle {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .15rem .45rem;
+      font-size: .8rem;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      white-space: nowrap;
+    }
+    .ctrl-toggle:hover { border-color: var(--border); color: var(--text); }
+    .ctrl-toggle[aria-expanded="true"] { color: var(--text); }
+    .ctrl-chevron { font-size: .65rem; display: inline-block; transition: transform .15s; }
+    .ctrl-toggle[aria-expanded="true"] .ctrl-chevron { transform: rotate(90deg); }
+    .ctrl-summary { color: var(--text); font-variant-numeric: tabular-nums; }
+    .ctrl-panel { display: none; }
+    .ctrl-panel.open {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .4rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .8rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
     #timeSlider {
       flex: 1;
       max-width: 320px;
@@ -134,17 +163,6 @@
       color: var(--muted);
     }
 
-    /* Location controls */
-    #loc-controls {
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-      padding: .45rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      font-size: .8rem;
-      color: var(--muted);
-      flex-wrap: wrap;
-    }
     .city-wrap { position: relative; }
     #cityInput {
       background: var(--surface);
@@ -225,8 +243,22 @@
   <span id="subtitle"></span>
 </header>
 
-<div id="loc-controls">
-  <label>Location</label>
+<div id="ctrl-bar">
+  <button id="locToggle" class="ctrl-toggle" aria-expanded="false" aria-controls="loc-panel">
+    <span class="ctrl-chevron">▸</span>Location: <span id="locSummary" class="ctrl-summary">Warsaw</span>
+  </button>
+  <button id="timeToggle" class="ctrl-toggle" aria-expanded="false" aria-controls="time-panel">
+    <span class="ctrl-chevron">▸</span>Time: <span id="timeSummary" class="ctrl-summary">12:00</span>
+  </button>
+  <span class="ctrl-sep">|</span>
+  <span class="view-btns">
+    <button id="btnSky" class="view-btn active">Sky</button><button id="btnEot" class="view-btn">EoT</button>
+  </span>
+  <span class="ctrl-sep">|</span>
+  <button id="btnMarkers" class="view-btn" title="Toggle month &amp; solstice markers">Markers</button>
+</div>
+
+<div id="loc-panel" class="ctrl-panel">
   <div class="city-wrap">
     <input type="text" id="cityInput" placeholder="Search city…" autocomplete="off" spellcheck="false">
     <ul id="cityDrop"></ul>
@@ -238,16 +270,10 @@
   <button id="geoBtn" title="Use my location">📍</button>
 </div>
 
-<div id="controls">
+<div id="time-panel" class="ctrl-panel">
   <label for="timeSlider">Time (LMST)</label>
   <input type="range" id="timeSlider" min="0" max="1439" step="1" value="720">
   <span id="timeReadout">12:00</span>
-  <span class="ctrl-sep">|</span>
-  <span class="view-btns">
-    <button id="btnSky" class="view-btn active">Sky</button><button id="btnEot" class="view-btn">EoT</button>
-  </span>
-  <span class="ctrl-sep">|</span>
-  <button id="btnMarkers" class="view-btn" title="Toggle month &amp; solstice markers">Markers</button>
 </div>
 
 <main>
@@ -1042,6 +1068,7 @@ function setupLocationControls() {
     const lmstHour = parseInt(_slider.value, 10) / 60;
     _pinned = false; _pinnedDoy = null;
     document.getElementById('info').style.display = 'none';
+    document.getElementById('locSummary').textContent = name;
     render({ lat, lon, name }, lmstHour, YEAR);
   }
 
@@ -1220,16 +1247,31 @@ function minutesToTimeStr(minutes) {
 _slider.addEventListener('input', () => {
   const minutes  = parseInt(_slider.value, 10);
   const lmstHour = minutes / 60;
-  _readout.textContent = minutesToTimeStr(minutes);
+  const timeStr  = minutesToTimeStr(minutes);
+  _readout.textContent = timeStr;
+  document.getElementById('timeSummary').textContent = timeStr;
   // Reset pin so the old panel doesn't show stale coordinates
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
   render(_loc, lmstHour, YEAR);
 });
 
+// ── Fold/unfold control panels ────────────────────────────────────────────────
+function setupFolds() {
+  [['locToggle', 'loc-panel'], ['timeToggle', 'time-panel']].forEach(([btnId, panelId]) => {
+    const btn   = document.getElementById(btnId);
+    const panel = document.getElementById(panelId);
+    btn.addEventListener('click', () => {
+      const open = panel.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(open));
+    });
+  });
+}
+
 render();
 setupInteraction();
 setupLocationControls();
+setupFolds();
 
 // ── View toggle ───────────────────────────────────────────────────────────────
 document.getElementById('btnSky').addEventListener('click', () => {

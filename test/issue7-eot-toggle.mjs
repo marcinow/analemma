@@ -51,6 +51,10 @@ async function midDotScreen() {
 
 // Helper: select a city by name via the autocomplete
 async function selectCity(name) {
+  // Ensure the Location panel is open (Issue 8a folds it by default)
+  const isOpen = await page.$eval('#loc-panel', el => el.classList.contains('open'));
+  if (!isOpen) await page.click('#locToggle');
+  await page.waitForTimeout(100);
   await page.click('#cityInput', { clickCount: 3 });
   await page.type('#cityInput', name);
   await page.waitForTimeout(300);

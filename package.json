@@ -4,6 +4,9 @@
     "playwright": "^1.60.0"
   },
   "scripts": {
-    "test": "node test/issue7-eot-toggle.mjs"
+    "test": "node test/issue7-eot-toggle.mjs && node test/issue8-markers.mjs && node test/issue8a-fold-controls.mjs",
+    "test:7": "node test/issue7-eot-toggle.mjs",
+    "test:8": "node test/issue8-markers.mjs",
+    "test:8a": "node test/issue8a-fold-controls.mjs"
   }
 }

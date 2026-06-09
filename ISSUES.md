@@ -24,6 +24,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 6 | Location: live geocoding search | ✅ Done | 5 |
 | 7 | EoT × Declination projection toggle | ✅ Done | 1 |
 | 8 | Markers + "today" | ✅ Done | 1 |
+| 8a | Fold/unfold Location & Time control lines | ✅ Done | 4, 5 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
 | 10 | Theme toggle (dark default) | 📋 Todo | 1 |
 | 11 | Language toggle (EN/PL) | 📋 Todo | 3 |
@@ -188,6 +189,27 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 - **Today marker**: amber glow ring + filled dot + `Today` label; **always visible**, independent of the Markers toggle; replaces the old ad-hoc dot from Issue 1
 - **Both views**: `drawMarkers()` is called after every re-render so markers appear correctly in both Sky and EoT × Declination projections
 - **`test/issue8-markers.mjs`**: 24 Playwright tests covering all marker types, label presence, solstice vertical ordering, equinox proximity to the equator line, Markers toggle (hides month/solstice but keeps today), and view-toggle persistence
+
+## Issue 8a — Fold/unfold Location & Time control lines
+
+**Status:** 📋 Todo · **Depends on:** 4, 5 · **PRD:** FR‑18, §6
+
+The controls bar is getting crowded. Make the **Location** and **Time** control lines individually **collapsible**, each behind a clickable header/disclosure toggle, **folded by default** so the page opens with a compact control area and the analemma front-and-center.
+
+- Wrap the location line (city search + lat/lon + geolocation) and the time line (LMST slider + readout) each in a foldable group with a labeled header (e.g. `▸ Location` / `▾ Location`).
+- **Folded by default**; clicking the header expands/collapses that group. State is per-group and independent.
+- Keep the controls keyboard-operable (header is a real button, `aria-expanded`) and the layout responsive (≥320 px).
+- A folded group should still show enough to orient the user — e.g. the header reflects the current value (current city name / current LMST) so the page is informative without expanding.
+
+**Done when:** opening the page shows both Location and Time folded; clicking either header reveals its controls; collapsing hides them again; the analemma still renders and other controls (view toggle, Markers) are unaffected.
+
+### Delivered
+
+- **`#ctrl-bar`** — always-visible bar containing the two fold toggles plus the Sky/EoT view toggle and Markers button; replaces the old `#loc-controls` and `#controls` divs
+- **Location toggle** (`#locToggle`) and **Time toggle** (`#timeToggle`) — `<button>` elements with `aria-expanded` and `aria-controls`; clicking flips the panel open/closed and rotates the `▸` chevron 90° via CSS transition
+- **`#loc-panel`** and **`#time-panel`** — collapsible panels (`display:none` / `.open` → `display:flex`); Location holds city search + lat/lon + geolocation, Time holds the LMST slider + readout
+- **Summary labels** — `#locSummary` (city name) and `#timeSummary` (HH:MM) are always visible in the bar and stay in sync: `triggerRender` updates `locSummary` on every location change; the slider's `input` handler updates `timeSummary` alongside the existing `timeReadout`
+- **`test/issue8a-fold-controls.mjs`**: 38 Playwright tests covering initial fold state, `aria-expanded` attributes, computed visibility, open/close toggling, simultaneous open, independent toggling, summary text updates (city select + slider move), always-visible controls, chart rendering, and zero JS errors
 
 ## Issue 9 — Golden-hour / twilight bands layer
 
