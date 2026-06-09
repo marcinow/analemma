@@ -23,7 +23,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 5 | Location: bundled cities + manual lat/long | ✅ Done | 1 |
 | 6 | Location: live geocoding search | ✅ Done | 5 |
 | 7 | EoT × Declination projection toggle | ✅ Done | 1 |
-| 8 | Markers + "today" | 📋 Todo | 1 |
+| 8 | Markers + "today" | ✅ Done | 1 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
 | 10 | Theme toggle (dark default) | 📋 Todo | 1 |
 | 11 | Language toggle (EN/PL) | 📋 Todo | 3 |
@@ -172,11 +172,20 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 8 — Markers + "today"
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑11, FR‑12
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑11, FR‑12
 
 - Draw and label **solstices, equinoxes, and 1st-of-month ticks**; highlight the **current date** with a distinct marker. Works in both projections.
 
 **Done when:** markers appear at the correct dates/positions in both views; "today" is visible.
+
+### Delivered
+
+- **Month start ticks**: all 12 months get a small outlined circle + 3-letter label (`Jan`–`Dec`), positioned radially outward from the curve center so labels don't overlap the path
+- **Solstice markers**: June solstice in amber (`#f5a623`), December solstice in light blue (`#93c5fd`); each labeled with the exact computed date (e.g. `Jun 21`)
+- **Equinox markers**: March and September equinoxes in teal (`#5eead4`), labeled with the date; correctly placed near the equator line in EoT × Decl view
+- **Today marker**: amber glow ring + filled dot + `Today` label; replaces the old ad-hoc dot from Issue 1; draws on top of any month/solstice marker that falls on the same day
+- **Both views**: `drawMarkers()` is called after every re-render so markers appear correctly in both Sky and EoT × Declination projections
+- **`test/issue8-markers.mjs`**: 20 Playwright tests covering all marker types, label presence, solstice vertical ordering, equinox proximity to the equator line, and view-toggle persistence
 
 ## Issue 9 — Golden-hour / twilight bands layer
 

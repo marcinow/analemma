@@ -9,7 +9,7 @@
 * Implement with Sonnet model
 
 ``` implement Issue N ```
-``` mark Issue N as Done, also add what was delivered and what to verify (text above) to the issue description in ISSUES.md file ```
+``` mark Issue N as Done, also add what was delivered and tests result to the issue description in ISSUES.md file ```
 ``` write down playwright tests for issue 7 to a separate file in test folder so it coule be run later to detect regressions ```
 - commit after each issue is implemeted (makes easy to navigate between implemenation phases or to discard incorrect implementation)
 

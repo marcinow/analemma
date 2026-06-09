@@ -598,6 +598,102 @@ function toSolarTimeStr(date, lon) {
   return `${String(h).padStart(2,'0')}:${String(m === 60 ? 0 : m).padStart(2,'0')}`;
 }
 
+// ── Markers layer: month ticks, solstices/equinoxes, today ───────────────────
+function drawMarkers(svg, pts, M, pw, ph, year) {
+  const now      = new Date();
+  const todayDoy = year === now.getFullYear()
+    ? Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+        - Date.UTC(now.getFullYear(), 0, 1)) / 864e5)
+    : -1;
+
+  // Solstices = max/min declination
+  let summerIdx = 0, winterIdx = 0, maxDecl = -Infinity, minDecl = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    if (pts[i].declDeg > maxDecl) { maxDecl = pts[i].declDeg; summerIdx = i; }
+    if (pts[i].declDeg < minDecl) { minDecl = pts[i].declDeg; winterIdx = i; }
+  }
+  // Equinoxes = declination sign crossing
+  let springIdx = -1, autumnIdx = -1;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i-1].declDeg, b = pts[i].declDeg;
+    if (a <= 0 && b > 0 && springIdx === -1) springIdx = i;
+    if (a >= 0 && b < 0 && autumnIdx === -1) autumnIdx = i;
+  }
+
+  const specialSet = new Set(
+    [summerIdx, winterIdx, springIdx, autumnIdx, todayDoy].filter(i => i >= 0)
+  );
+  const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const cx = M.left + pw / 2, cy = M.top + ph / 2;
+
+  const circG = el('g', { 'clip-path': 'url(#pc)', 'pointer-events': 'none' });
+  const lblG  = el('g', { 'pointer-events': 'none' });
+
+  // Month start ticks
+  for (const p of pts) {
+    if (p.date.getUTCDate() !== 1) continue;
+    if (specialSet.has(p.doy)) continue;
+    const m = p.date.getUTCMonth();
+    circG.appendChild(el('circle', {
+      cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
+      r: 3, fill: 'var(--surface)', stroke: 'var(--muted)', 'stroke-width': 1.2
+    }));
+    const dx = p.sx - cx, dy = p.sy - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    const ox = (dx / dist) * 14, oy = (dy / dist) * 14;
+    const anchor = ox > 2 ? 'start' : ox < -2 ? 'end' : 'middle';
+    lblG.appendChild(el('text', {
+      x: (p.sx + ox).toFixed(1), y: (p.sy + oy + 3).toFixed(1),
+      'text-anchor': anchor,
+      fill: 'var(--muted)', 'font-size': '8px', 'font-family': 'inherit'
+    }, MONTH[m]));
+  }
+
+  // Solstice & equinox markers
+  const events = [
+    { idx: summerIdx, color: '#f5a623' },
+    { idx: winterIdx, color: '#93c5fd' },
+    { idx: springIdx, color: '#5eead4' },
+    { idx: autumnIdx, color: '#5eead4' },
+  ].filter(ev => ev.idx >= 0 && ev.idx < pts.length);
+
+  for (const ev of events) {
+    const p = pts[ev.idx];
+    circG.appendChild(el('circle', {
+      cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
+      r: 5, fill: ev.color, opacity: .9
+    }));
+    const dateStr = p.date.toLocaleString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    const lblY = p.sy > cy ? p.sy + 14 : p.sy - 8;
+    lblG.appendChild(el('text', {
+      x: p.sx.toFixed(1), y: lblY.toFixed(1),
+      'text-anchor': 'middle',
+      fill: ev.color, 'font-size': '9px', 'font-family': 'inherit', 'font-weight': '600'
+    }, dateStr));
+  }
+
+  // Today marker
+  if (todayDoy >= 0 && todayDoy < pts.length) {
+    const tp = pts[todayDoy];
+    circG.appendChild(el('circle', {
+      cx: tp.sx.toFixed(2), cy: tp.sy.toFixed(2),
+      r: 8, fill: 'var(--accent)', opacity: .2
+    }));
+    circG.appendChild(el('circle', {
+      cx: tp.sx.toFixed(2), cy: tp.sy.toFixed(2),
+      r: 5, fill: 'var(--accent)'
+    }));
+    const lblY = tp.sy > M.top + 20 ? tp.sy - 12 : tp.sy + 18;
+    lblG.appendChild(el('text', {
+      x: (tp.sx + 8).toFixed(1), y: lblY.toFixed(1),
+      fill: 'var(--accent)', 'font-size': '10px', 'font-family': 'inherit', 'font-weight': '600'
+    }, 'Today'));
+  }
+
+  svg.appendChild(circG);
+  svg.appendChild(lblG);
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
   _loc = { lat, lon, name };
@@ -747,33 +843,18 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
     opacity: .9, 'clip-path': 'url(#pc)'
   }));
 
-  // ── Dots
-  const now      = new Date();
-  const todayDoy = Math.floor(
-    (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(now.getFullYear(), 0, 1)) / 864e5
-  );
+  // ── Dots (uniform background)
   const dotsG = el('g', { 'clip-path': 'url(#pc)', 'pointer-events': 'none' });
   for (const p of pts) {
-    const isToday = p.doy === todayDoy && year === now.getFullYear();
     dotsG.appendChild(el('circle', {
       cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
-      r: isToday ? 5 : 1.8,
-      fill: isToday ? 'var(--accent)' : 'var(--dot)',
-      opacity: isToday ? 1 : .45
+      r: 1.8, fill: 'var(--dot)', opacity: .45
     }));
   }
   svg.appendChild(dotsG);
 
-  // ── Today label
-  const tp = pts[todayDoy];
-  if (tp && year === now.getFullYear()) {
-    const lblY = tp.sy > M.top + 20 ? tp.sy - 10 : tp.sy + 18;
-    svg.appendChild(el('text', {
-      x: tp.sx + 7, y: lblY,
-      fill: 'var(--accent)', 'font-size': '10px', 'font-family': 'inherit',
-      'pointer-events': 'none'
-    }, 'Today'));
-  }
+  // ── Markers: month starts, solstices, equinoxes, today
+  drawMarkers(svg, pts, M, pw, ph, year);
 
   // ── Highlight ring
   svg.appendChild(el('circle', {
