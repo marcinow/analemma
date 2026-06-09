@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analemma</title>
+  <style>
+    :root {
+      --bg:      #080e18;
+      --surface: #0c1524;
+      --border:  #1b2a3d;
+      --text:    #dce8f5;
+      --muted:   #5f7e9e;
+      --accent:  #f5a623;
+      --curve:   #4ea8de;
+      --dot:     #93c5fd;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+    header {
+      padding: .7rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    h1 {
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    #subtitle { font-size: .8rem; color: var(--muted); }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: .75rem;
+      min-height: 0;
+    }
+    #chart {
+      width: 100%;
+      height: 100%;
+      max-width: 700px;
+      max-height: 580px;
+    }
+    /* SVG text styles applied via class */
+    .tick-lbl  { fill: var(--muted); font-size: 10px; font-family: inherit; }
+    .ax-title  { fill: var(--muted); font-size: 11px; font-family: inherit; }
+    .h-label   { fill: var(--muted); font-size: 10px; font-family: inherit; font-style: italic; }
+    footer {
+      padding: .45rem 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: .68rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Analemma</h1>
+  <span id="subtitle"></span>
+</header>
+
+<main>
+  <svg id="chart" viewBox="0 0 660 540" xmlns="http://www.w3.org/2000/svg"></svg>
+</main>
+
+<footer>
+  Sky view · azimuth × altitude · Solar positions via SunCalc (MIT) · Values are approximate, for illustration only
+</footer>
+
+<script>
+// ─── SunCalc vendored ────────────────────────────────────────────────────────
+// Source: https://github.com/mourner/suncalc  (MIT licence)
+const SunCalc = (() => {
+  const PI=Math.PI,sin=Math.sin,cos=Math.cos,tan=Math.tan,
+        asin=Math.asin,atan=Math.atan2,acos=Math.acos,rad=PI/180;
+  const dayMs=864e5,J1970=2440588,J2000=2451545;
+  const toJulian=d=>d.valueOf()/dayMs-.5+J1970;
+  const fromJulian=j=>new Date((j+.5-J1970)*dayMs);
+  const toDays=d=>toJulian(d)-J2000;
+  const e=rad*23.4397;
+  const rightAscension=(l,b)=>atan(sin(l)*cos(e)-tan(b)*sin(e),cos(l));
+  const declination=(l,b)=>asin(sin(b)*cos(e)+cos(b)*sin(e)*sin(l));
+  const _azimuth=(H,phi,dec)=>atan(sin(H),cos(H)*sin(phi)-tan(dec)*cos(phi));
+  const _altitude=(H,phi,dec)=>asin(sin(phi)*sin(dec)+cos(phi)*cos(dec)*cos(H));
+  const siderealTime=(d,lw)=>rad*(280.16+360.9856235*d)-lw;
+  const astroRefraction=h=>{if(h<0)h=0;return .0002967/Math.tan(h+.00312536/(h+.08901179));};
+  const solarMeanAnomaly=d=>rad*(357.5291+.98560028*d);
+  const eclipticLongitude=M=>{
+    const C=rad*(1.9148*sin(M)+.02*sin(2*M)+.0003*sin(3*M)),P=rad*102.9372;
+    return M+C+P+PI;
+  };
+  const sunCoords=d=>{const M=solarMeanAnomaly(d),L=eclipticLongitude(M);
+    return{dec:declination(L,0),ra:rightAscension(L,0)};};
+  const getPosition=(date,lat,lng)=>{
+    const lw=rad*-lng,phi=rad*lat,d=toDays(date),c=sunCoords(d),H=siderealTime(d,lw)-c.ra;
+    return{azimuth:_azimuth(H,phi,c.dec),altitude:_altitude(H,phi,c.dec)};
+  };
+  const TIMES=[[-0.833,'sunrise','sunset'],[-0.3,'sunriseEnd','sunsetStart'],
+    [-6,'dawn','dusk'],[-12,'nauticalDawn','nauticalDusk'],[-18,'nightEnd','night'],[6,'goldenHourEnd','goldenHour']];
+  const J0=.0009;
+  const julianCycle=(d,lw)=>Math.round(d-J0-lw/(2*PI));
+  const approxTransit=(Ht,lw,n)=>J0+(Ht+lw)/(2*PI)+n;
+  const solarTransitJ=(ds,M,L)=>J2000+ds+.0053*sin(M)-.0069*sin(2*L);
+  const hourAngle=(h,phi,d)=>acos((sin(h)-sin(phi)*sin(d))/(cos(phi)*cos(d)));
+  const observerAngle=h=>-2.076*Math.sqrt(h)/60;
+  const getSetJ=(h,lw,phi,dec,n,M,L)=>{const w=hourAngle(h,phi,dec),a=approxTransit(w,lw,n);return solarTransitJ(a,M,L);};
+  const getTimes=(date,lat,lng,height=0)=>{
+    const lw=rad*-lng,phi=rad*lat,dh=observerAngle(height),d=toDays(date),
+          n=julianCycle(d,lw),ds=approxTransit(0,lw,n),M=solarMeanAnomaly(ds),
+          L=eclipticLongitude(M),dec=declination(L,0),Jnoon=solarTransitJ(ds,M,L);
+    const r={solarNoon:fromJulian(Jnoon),nadir:fromJulian(Jnoon-.5)};
+    for(const t of TIMES){const h0=(t[0]+dh)*rad,Jset=getSetJ(h0,lw,phi,dec,n,M,L),Jrise=Jnoon-(Jset-Jnoon);
+      r[t[1]]=fromJulian(Jrise);r[t[2]]=fromJulian(Jset);}
+    return r;
+  };
+  const moonCoords=d=>{const L=rad*(218.316+13.176396*d),M=rad*(134.963+13.064993*d),
+    F=rad*(93.272+13.22935*d),l=L+rad*6.289*sin(M),b=rad*5.128*sin(F),dt=385001-20905*cos(M);
+    return{ra:rightAscension(l,b),dec:declination(l,b),dist:dt};};
+  const getMoonIllumination=date=>{
+    const d=toDays(date||new Date()),s=sunCoords(d),m=moonCoords(d),sdist=149598000,
+          phi=acos(sin(s.dec)*sin(m.dec)+cos(s.dec)*cos(m.dec)*cos(s.ra-m.ra)),
+          inc=atan(sdist*sin(phi),m.dist-sdist*cos(phi)),
+          angle=atan(cos(s.dec)*sin(s.ra-m.ra),sin(s.dec)*cos(m.dec)-cos(s.dec)*sin(m.dec)*cos(s.ra-m.ra));
+    return{fraction:(1+cos(inc))/2,phase:.5+.5*inc*(angle<0?-1:1)/PI,angle};
+  };
+  return{getPosition,getTimes,getMoonIllumination};
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Default location ──────────────────────────────────────────────────────────
+const DEFAULT = { lat: 52.2297, lon: 21.0122, name: 'Warsaw' };
+const YEAR    = new Date().getFullYear();
+const R2D     = 180 / Math.PI;
+
+// ── Build per-day positions ───────────────────────────────────────────────────
+function buildPoints(year, lat, lon, lmstHour = 12) {
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days  = leap ? 366 : 365;
+  // LMST noon → UTC: UTC_h = lmstHour − lon/15
+  const utcH  = lmstHour - lon / 15;
+  const pts   = [];
+  for (let i = 0; i < days; i++) {
+    const ms  = Date.UTC(year, 0, 1 + i) + utcH * 3600000;
+    const pos = SunCalc.getPosition(new Date(ms), lat, lon);
+    pts.push({
+      date:   new Date(Date.UTC(year, 0, 1 + i)),
+      azDeg:  pos.azimuth  * R2D,
+      altDeg: pos.altitude * R2D,
+      doy:    i
+    });
+  }
+  return pts;
+}
+
+// ── SVG helpers ───────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
+  const svg = document.getElementById('chart');
+  svg.innerHTML = '';
+
+  const W = 660, H = 540;
+  const M = { top: 32, right: 80, bottom: 58, left: 58 };
+  const pw = W - M.left - M.right;
+  const ph = H - M.top  - M.bottom;
+
+  const pts = buildPoints(year, lat, lon, lmstHour);
+
+  // Compute axis bounds from data
+  const azValues  = pts.map(p => p.azDeg);
+  const altValues = pts.map(p => p.altDeg);
+  const azCenter  = (Math.max(...azValues) + Math.min(...azValues)) / 2;
+  const azHalf    = Math.max(Math.max(...azValues) - azCenter, azCenter - Math.min(...azValues));
+  const azPad     = Math.max(azHalf * 1.6, 3.5); // at least ±3.5°
+  const azMin = azCenter - azPad, azMax = azCenter + azPad;
+  const altMax = Math.ceil((Math.max(...altValues) + 6) / 10) * 10;
+  const altMin = 0;
+
+  const xOf  = az  => M.left + (az  - azMin)  / (azMax  - azMin)  * pw;
+  const yOf  = alt => M.top  + ph  - (alt - altMin) / (altMax - altMin) * ph;
+  const horizY = yOf(0);
+
+  // ── Defs: clip + sky gradient
+  const defs = el('defs');
+  defs.appendChild((() => {
+    const cp = el('clipPath', { id: 'pc' });
+    cp.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph }));
+    return cp;
+  })());
+  const grad = el('linearGradient', { id: 'skyG', x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.appendChild(el('stop', { offset: '0%',   'stop-color': '#06111f' }));
+  grad.appendChild(el('stop', { offset: '100%', 'stop-color': '#0b1d31' }));
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+
+  // ── Chart background
+  svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--bg)' }));
+  svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph,
+    fill: 'var(--surface)', rx: 3 }));
+
+  // Sky above horizon (clipped)
+  const skyH = Math.max(0, Math.min(horizY - M.top, ph));
+  if (skyH > 0) {
+    svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: skyH,
+      fill: 'url(#skyG)', 'clip-path': 'url(#pc)' }));
+  }
+
+  // ── Altitude grid lines
+  const altStep = 10;
+  for (let a = 0; a <= altMax; a += altStep) {
+    const y = yOf(a);
+    if (y < M.top - 1 || y > M.top + ph + 1) continue;
+    svg.appendChild(el('line', {
+      x1: M.left, y1: y, x2: M.left + pw, y2: y,
+      stroke: a === 0 ? '#1e3a5f' : 'var(--border)',
+      'stroke-width': a === 0 ? 1.5 : .5
+    }));
+    svg.appendChild(el('text', { x: M.left - 7, y: y + 3.5,
+      'text-anchor': 'end', class: 'tick-lbl' }, a + '°'));
+  }
+
+  // ── Azimuth grid lines
+  const azStep = azPad <= 5 ? 2 : azPad <= 9 ? 3 : 5;
+  for (let a = Math.ceil(azMin / azStep) * azStep; a <= azMax + .01; a += azStep) {
+    const x = xOf(a);
+    if (x < M.left - 1 || x > M.left + pw + 1) continue;
+    svg.appendChild(el('line', {
+      x1: x, y1: M.top, x2: x, y2: M.top + ph,
+      stroke: Math.abs(a) < .01 ? '#1e3a5f' : 'var(--border)',
+      'stroke-width': Math.abs(a) < .01 ? 1 : .5,
+      'stroke-dasharray': Math.abs(a) < .01 ? '' : '4 3'
+    }));
+    const lab = Math.abs(a) < .01 ? 'S'
+              : a > 0 ? `${a}° W`
+              : `${Math.abs(a)}° E`;
+    svg.appendChild(el('text', { x, y: M.top + ph + 15,
+      'text-anchor': 'middle', class: 'tick-lbl' }, lab));
+  }
+
+  // ── Horizon label
+  svg.appendChild(el('text', { x: M.left + pw + 6, y: horizY + 3.5, class: 'h-label' }, 'Horizon'));
+
+  // ── Axis titles
+  const midX = M.left + pw / 2, midY = M.top + ph / 2;
+  svg.appendChild(el('text', {
+    x: 15, y: midY,
+    transform: `rotate(-90,15,${midY})`,
+    'text-anchor': 'middle', class: 'ax-title'
+  }, 'Altitude'));
+  svg.appendChild(el('text', {
+    x: midX, y: H - 10,
+    'text-anchor': 'middle', class: 'ax-title'
+  }, '← East   Azimuth from South   West →'));
+
+  // ── Analemma path
+  const pathD = pts.map((p, i) =>
+    `${i ? 'L' : 'M'}${xOf(p.azDeg).toFixed(2)},${yOf(p.altDeg).toFixed(2)}`
+  ).join('') + 'Z';
+  svg.appendChild(el('path', {
+    d: pathD, fill: 'none',
+    stroke: 'var(--curve)', 'stroke-width': 2,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    opacity: .9, 'clip-path': 'url(#pc)'
+  }));
+
+  // ── Dots
+  const now      = new Date();
+  const todayDoy = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+                             - Date.UTC(now.getFullYear(), 0, 1)) / 864e5);
+
+  const dotsG = el('g', { 'clip-path': 'url(#pc)' });
+  for (const p of pts) {
+    const isToday = p.doy === todayDoy && year === now.getFullYear();
+    dotsG.appendChild(el('circle', {
+      cx: xOf(p.azDeg).toFixed(2),
+      cy: yOf(p.altDeg).toFixed(2),
+      r: isToday ? 5 : 1.8,
+      fill: isToday ? 'var(--accent)' : 'var(--dot)',
+      opacity: isToday ? 1 : .45
+    }));
+  }
+  svg.appendChild(dotsG);
+
+  // ── Today label
+  const tp = pts[todayDoy];
+  if (tp && year === now.getFullYear()) {
+    const tx = xOf(tp.azDeg), ty = yOf(tp.altDeg);
+    const lblY = ty > M.top + 20 ? ty - 10 : ty + 18;
+    svg.appendChild(el('text', {
+      x: tx + 7, y: lblY, fill: 'var(--accent)',
+      'font-size': '10px', 'font-family': 'inherit'
+    }, 'Today'));
+  }
+
+  // ── Subtitle
+  const timeStr = `${String(Math.floor(lmstHour)).padStart(2,'0')}:${String(Math.round((lmstHour%1)*60)).padStart(2,'0')}`;
+  document.getElementById('subtitle').textContent =
+    `${name} · ${year} · LMST ${timeStr} (solar noon)`;
+}
+
+render();
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 
 | # | Issue | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | Walking skeleton: static analemma | 📋 Todo | — |
+| 1 | Walking skeleton: static analemma | ✅ Done | — |
 | 2 | Hover/tap a point → date | 📋 Todo | 1 |
 | 3 | Rich per-day info panel | 📋 Todo | 2 |
 | 4 | Time-of-day slider | 📋 Todo | 1 |
@@ -34,7 +34,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 
 ## Issue 1 — Walking skeleton: static analemma
 
-**Status:** 📋 Todo · **Depends on:** — · **PRD:** FR‑1, FR‑3 (noon only), §5, §7
+**Status:** ✅ Done · **Depends on:** — · **PRD:** FR‑1, FR‑3 (noon only), §5, §7
 
 The tracer bullet: a single self-contained `index.html` that opens via `file://` and draws a correct figure‑8.
 
@@ -43,6 +43,22 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 - Render the points as an SVG path in the **sky view** (azimuth × altitude) with horizon line and labeled axes, in a responsive `viewBox`.
 
 **Done when:** opening the file in a browser (no server, offline) shows a recognizable analemma; solstice points sit at the declination extremes and the curve is near-symmetric at noon.
+
+### Delivered
+
+- **SunCalc vendored inline** — fully offline, no external dependencies
+- **365 daily Sun positions** for Warsaw 2026, sampled at LMST 12:00 using `UTC = 12 − lon/15`
+- **Sky view** (azimuth × altitude) rendered as a closed SVG path forming the figure-8
+- Horizon line, altitude grid (every 10°), azimuth grid with `← East  S  West →` orientation labels
+- **"Today" dot** highlighted in amber with a label
+- Responsive `viewBox`; opens via `file://` with zero network required
+
+### Verify
+
+- Top of the 8 ≈ **61° altitude** (summer solstice, Sun high); bottom ≈ **14°** (winter solstice)
+- Left-right sway ≈ **±4°** — the equation of time signature
+- Curve is near-symmetric about the south meridian line at noon
+- Today's dot is correctly placed for the current date
 
 ## Issue 2 — Hover/tap a point → date
 
