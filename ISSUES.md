@@ -20,7 +20,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 2 | Hover/tap a point → date | ✅ Done | 1 |
 | 3 | Rich per-day info panel | ✅ Done | 2 |
 | 4 | Time-of-day slider | ✅ Done | 1 |
-| 5 | Location: bundled cities + manual lat/long | 📋 Todo | 1 |
+| 5 | Location: bundled cities + manual lat/long | ✅ Done | 1 |
 | 6 | Location: live geocoding search | 📋 Todo | 5 |
 | 7 | EoT × Declination projection toggle | 📋 Todo | 1 |
 | 8 | Markers + "today" | 📋 Todo | 1 |
@@ -120,12 +120,21 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 5 — Location: bundled cities + manual lat/long
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑7, FR‑9, FR‑10
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑7, FR‑9, FR‑10
 
 - Inline a **~150-city list**; add an autocomplete selector and **manual lat/long inputs** that re-render the curve.
 - Optional **"use my location"** via the Geolocation API.
 
 **Done when:** picking a city or entering coordinates updates the analemma; works fully offline.
+
+### Delivered
+
+- **Location controls bar** added above the time slider with city search, lat/lon inputs, and geolocation button
+- **City autocomplete** — type to filter the bundled list; keyboard navigation (↑/↓/Enter/Esc); click/tap to select; dropdown shows up to 8 matches
+- **Lat / Lon number inputs** — edit directly and press Enter or blur to re-render; accepts any valid coordinates; shows cardinal-direction name (e.g. `48.85°N, 2.35°E`) when no city match
+- **📍 geolocation button** — calls `navigator.geolocation`; shows ⌛ while waiting; hidden when the API is absent
+- **City → coords sync**: selecting a city fills the lat/lon inputs; editing coords tries to reverse-match a bundled city name
+- **Bundled city list**: 152 cities across all continents and timezones, including polar extremes (Longyearbyen 78°N, Ushuaia 55°S) for testing polar day/night; fully offline — no network needed
 
 ## Issue 6 — Location: live geocoding search
 
