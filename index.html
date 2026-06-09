@@ -162,6 +162,19 @@
       font-size: .68rem;
       color: var(--muted);
     }
+    #btnLang {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .15rem .5rem;
+      font-size: .75rem;
+      font-family: inherit;
+      letter-spacing: .05em;
+    }
+    #btnLang:hover { border-color: var(--accent); color: var(--text); }
 
     .city-wrap { position: relative; }
     #cityInput {
@@ -241,21 +254,22 @@
 <header>
   <h1>Analemma</h1>
   <span id="subtitle"></span>
+  <button id="btnLang" title="Language / Język">PL</button>
 </header>
 
 <div id="ctrl-bar">
   <button id="locToggle" class="ctrl-toggle" aria-expanded="false" aria-controls="loc-panel">
-    <span class="ctrl-chevron">▸</span>Location: <span id="locSummary" class="ctrl-summary">Warsaw</span>
+    <span class="ctrl-chevron">▸</span><span data-i18n="ctrl.location">Location</span>: <span id="locSummary" class="ctrl-summary">Warsaw</span>
   </button>
   <button id="timeToggle" class="ctrl-toggle" aria-expanded="false" aria-controls="time-panel">
-    <span class="ctrl-chevron">▸</span>Time: <span id="timeSummary" class="ctrl-summary">12:00</span>
+    <span class="ctrl-chevron">▸</span><span data-i18n="ctrl.time">Time</span>: <span id="timeSummary" class="ctrl-summary">12:00</span>
   </button>
   <span class="ctrl-sep">|</span>
   <span class="view-btns">
-    <button id="btnSky" class="view-btn active">Sky</button><button id="btnEot" class="view-btn">EoT</button>
+    <button id="btnSky" class="view-btn active" data-i18n="ctrl.sky">Sky</button><button id="btnEot" class="view-btn" data-i18n="ctrl.eot">EoT</button>
   </span>
   <span class="ctrl-sep">|</span>
-  <button id="btnMarkers" class="view-btn" title="Toggle month &amp; solstice markers">Markers</button>
+  <button id="btnMarkers" class="view-btn" data-i18n="ctrl.markers">Markers</button>
 </div>
 
 <div id="loc-panel" class="ctrl-panel">
@@ -263,15 +277,15 @@
     <input type="text" id="cityInput" placeholder="Search city…" autocomplete="off" spellcheck="false">
     <ul id="cityDrop"></ul>
   </div>
-  <label for="latInput">Lat</label>
+  <label for="latInput" data-i18n="loc.lat">Lat</label>
   <input type="number" id="latInput" class="coord-input" min="-90"  max="90"   step="0.0001">
-  <label for="lonInput">Lon</label>
+  <label for="lonInput" data-i18n="loc.lon">Lon</label>
   <input type="number" id="lonInput" class="coord-input" min="-180" max="180"  step="0.0001">
   <button id="geoBtn" title="Use my location">📍</button>
 </div>
 
 <div id="time-panel" class="ctrl-panel">
-  <label for="timeSlider">Time (LMST)</label>
+  <label for="timeSlider" data-i18n="time.label">Time (LMST)</label>
   <input type="range" id="timeSlider" min="0" max="1439" step="1" value="720">
   <span id="timeReadout">12:00</span>
 </div>
@@ -595,20 +609,92 @@ let _pinnedDoy  = null;
 let _view       = 'sky';  // 'sky' | 'eot'
 let _markersOn  = false;
 
+// ── Internationalisation ──────────────────────────────────────────────────────
+const STRINGS = {
+  en: {
+    'ctrl.location': 'Location',    'ctrl.time': 'Time',
+    'ctrl.sky': 'Sky',              'ctrl.eot': 'EoT',
+    'ctrl.markers': 'Markers',
+    'loc.placeholder': 'Search city…',
+    'loc.lat': 'Lat',               'loc.lon': 'Lon',
+    'time.label': 'Time (LMST)',
+    'info.altitude': 'Altitude',    'info.azimuth': 'Azimuth',
+    'info.eot': 'Eq. of Time',      'info.decl': 'Declination',
+    'info.sunrise': 'Sunrise',      'info.sunset': 'Sunset',
+    'info.daylength': 'Day length', 'info.nightlength': 'Night length',
+    'info.polarday': 'Sun up all day',
+    'info.polarnight': 'Sun never rises',
+    'moon.new': 'New Moon',               'moon.waxcrescent': 'Waxing Crescent',
+    'moon.firstquarter': 'First Quarter', 'moon.waxgibbous': 'Waxing Gibbous',
+    'moon.full': 'Full Moon',             'moon.wangibbous': 'Waning Gibbous',
+    'moon.lastquarter': 'Last Quarter',   'moon.wancrescent': 'Waning Crescent',
+    'axis.altitude': 'Altitude',
+    'axis.azimuth': '← East   Azimuth from South   West →',
+    'axis.decl': 'Declination (°)',
+    'axis.eot': '← fast   Equation of Time (min)   slow →',
+    'axis.horizon': 'Horizon',      'axis.equator': 'Equator',
+    'marker.today': 'Today',
+    'months': ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    'footer.sky': 'Sky view · azimuth × altitude · Solar positions via SunCalc (MIT) · Values are approximate, for illustration only',
+    'footer.eot': 'EoT × Declination view · location-independent · Equation of time via NOAA formulae · Values are approximate, for illustration only',
+    'drop.online': '🌐 online results',
+    'drop.offline': '⚠ offline — bundled cities only',
+    'subtitle.sky': 'Sky',          'subtitle.eot': 'EoT × Decl',
+    'lang.toggle': 'PL',
+  },
+  pl: {
+    'ctrl.location': 'Lokalizacja', 'ctrl.time': 'Czas',
+    'ctrl.sky': 'Niebo',            'ctrl.eot': 'RCz',
+    'ctrl.markers': 'Znaczniki',
+    'loc.placeholder': 'Szukaj miasta…',
+    'loc.lat': 'Szer.',             'loc.lon': 'Dł.',
+    'time.label': 'Czas (LMST)',
+    'info.altitude': 'Wysokość',    'info.azimuth': 'Azymut',
+    'info.eot': 'Równ. czasu',      'info.decl': 'Deklinacja',
+    'info.sunrise': 'Wschód Słońca','info.sunset': 'Zachód Słońca',
+    'info.daylength': 'Dł. dnia',   'info.nightlength': 'Dł. nocy',
+    'info.polarday': 'Słońce przez całą dobę',
+    'info.polarnight': 'Słońce nie wschodzi',
+    'moon.new': 'Nów',                    'moon.waxcrescent': 'Sierp przybywający',
+    'moon.firstquarter': 'Pierwsza kwadra','moon.waxgibbous': 'Garb przybywający',
+    'moon.full': 'Pełnia',                'moon.wangibbous': 'Garb ubywający',
+    'moon.lastquarter': 'Ostatnia kwadra','moon.wancrescent': 'Sierp ubywający',
+    'axis.altitude': 'Wysokość',
+    'axis.azimuth': '← Wschód   Azymut od Południa   Zachód →',
+    'axis.decl': 'Deklinacja (°)',
+    'axis.eot': '← szybko   Równanie czasu (min)   wolno →',
+    'axis.horizon': 'Horyzont',     'axis.equator': 'Równik',
+    'marker.today': 'Dziś',
+    'months': ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'],
+    'footer.sky': 'Widok nieba · azymut × wysokość · Pozycje Słońca via SunCalc (MIT) · Wartości przybliżone, tylko do celów ilustracyjnych',
+    'footer.eot': 'Widok RCz × Dekl. · niezależny od lokalizacji · Równanie czasu wg wzorów NOAA · Wartości przybliżone',
+    'drop.online': '🌐 wyniki online',
+    'drop.offline': '⚠ tryb offline — tylko wbudowane miasta',
+    'subtitle.sky': 'Niebo',        'subtitle.eot': 'RCz × Dekl',
+    'lang.toggle': 'EN',
+  }
+};
+let _lang = 'en';
+function t(key) { return STRINGS[_lang][key] ?? STRINGS.en[key]; }
+
 // ── Astronomy helpers ─────────────────────────────────────────────────────────
 function moonPhaseInfo(phase) {
   const phases = [
-    [0.0625, '🌑', 'New Moon'],
-    [0.1875, '🌒', 'Waxing Crescent'],
-    [0.3125, '🌓', 'First Quarter'],
-    [0.4375, '🌔', 'Waxing Gibbous'],
-    [0.5625, '🌕', 'Full Moon'],
-    [0.6875, '🌖', 'Waning Gibbous'],
-    [0.8125, '🌗', 'Last Quarter'],
-    [0.9375, '🌘', 'Waning Crescent'],
+    [0.0625, '🌑', 'moon.new'],
+    [0.1875, '🌒', 'moon.waxcrescent'],
+    [0.3125, '🌓', 'moon.firstquarter'],
+    [0.4375, '🌔', 'moon.waxgibbous'],
+    [0.5625, '🌕', 'moon.full'],
+    [0.6875, '🌖', 'moon.wangibbous'],
+    [0.8125, '🌗', 'moon.lastquarter'],
+    [0.9375, '🌘', 'moon.wancrescent'],
   ];
-  for (const [limit, icon, name] of phases) if (phase < limit) return { icon, name };
-  return { icon: '🌑', name: 'New Moon' };
+  for (const [limit, icon, key] of phases) if (phase < limit) return { icon, name: t(key) };
+  return { icon: '🌑', name: t('moon.new') };
+}
+
+function fmtDate(date) {
+  return new Intl.DateTimeFormat(_lang === 'pl' ? 'pl' : 'en', { month: 'long', day: 'numeric' }).format(date);
 }
 
 function fmtDuration(ms) {
@@ -652,7 +738,7 @@ function drawMarkers(svg, pts, M, pw, ph, year, showMarkers = true) {
   const specialSet = new Set(
     [summerIdx, winterIdx, springIdx, autumnIdx, todayDoy].filter(i => i >= 0)
   );
-  const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTH = t('months');
   const cx = M.left + pw / 2, cy = M.top + ph / 2;
 
   const circG = el('g', { 'clip-path': 'url(#pc)', 'pointer-events': 'none' });
@@ -693,7 +779,7 @@ function drawMarkers(svg, pts, M, pw, ph, year, showMarkers = true) {
         cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
         r: 5, fill: ev.color, opacity: .9
       }));
-      const dateStr = p.date.toLocaleString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      const dateStr = p.date.toLocaleString(_lang === 'pl' ? 'pl' : 'en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
       const lblY = p.sy > cy ? p.sy + 14 : p.sy - 8;
       lblG.appendChild(el('text', {
         x: p.sx.toFixed(1), y: lblY.toFixed(1),
@@ -718,7 +804,7 @@ function drawMarkers(svg, pts, M, pw, ph, year, showMarkers = true) {
     lblG.appendChild(el('text', {
       x: (tp.sx + 8).toFixed(1), y: lblY.toFixed(1),
       fill: 'var(--accent)', 'font-size': '10px', 'font-family': 'inherit', 'font-weight': '600'
-    }, 'Today'));
+    }, t('marker.today')));
   }
 
   svg.appendChild(circG);
@@ -803,13 +889,13 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
         'text-anchor': 'middle', class: 'tick-lbl' }, lab));
     }
 
-    svg.appendChild(el('text', { x: M.left + pw + 6, y: horizY + 3.5, class: 'h-label' }, 'Horizon'));
+    svg.appendChild(el('text', { x: M.left + pw + 6, y: horizY + 3.5, class: 'h-label' }, t('axis.horizon')));
 
     const midX = M.left + pw / 2, midY = M.top + ph / 2;
     svg.appendChild(el('text', { x: 15, y: midY, transform: `rotate(-90,15,${midY})`,
-      'text-anchor': 'middle', class: 'ax-title' }, 'Altitude'));
+      'text-anchor': 'middle', class: 'ax-title' }, t('axis.altitude')));
     svg.appendChild(el('text', { x: midX, y: H - 10, 'text-anchor': 'middle', class: 'ax-title' },
-      '← East   Azimuth from South   West →'));
+      t('axis.azimuth')));
 
   } else {
     // ── EoT × Declination view
@@ -852,13 +938,13 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
         'text-anchor': 'middle', class: 'tick-lbl' }, lab));
     }
 
-    svg.appendChild(el('text', { x: M.left + pw + 6, y: yOf(0) + 3.5, class: 'h-label' }, 'Equator'));
+    svg.appendChild(el('text', { x: M.left + pw + 6, y: yOf(0) + 3.5, class: 'h-label' }, t('axis.equator')));
 
     const midX = M.left + pw / 2, midY = M.top + ph / 2;
     svg.appendChild(el('text', { x: 15, y: midY, transform: `rotate(-90,15,${midY})`,
-      'text-anchor': 'middle', class: 'ax-title' }, 'Declination (°)'));
+      'text-anchor': 'middle', class: 'ax-title' }, t('axis.decl')));
     svg.appendChild(el('text', { x: midX, y: H - 10, 'text-anchor': 'middle', class: 'ax-title' },
-      '← fast   Equation of Time (min)   slow →'));
+      t('axis.eot')));
   }
 
   _pts = pts;
@@ -903,20 +989,18 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
   // ── Subtitle
   const h = Math.floor(lmstHour), mm = Math.round((lmstHour % 1) * 60);
   const timeStr = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-  const viewLabel = _view === 'sky' ? 'Sky' : 'EoT × Decl';
+  const viewLabel = _view === 'sky' ? t('subtitle.sky') : t('subtitle.eot');
   document.getElementById('subtitle').textContent =
     `${name} · ${year} · LMST ${timeStr} · ${viewLabel}`;
 
-  document.getElementById('footer').textContent = _view === 'sky'
-    ? 'Sky view · azimuth × altitude · Solar positions via SunCalc (MIT) · Values are approximate, for illustration only'
-    : 'EoT × Declination view · location-independent · Equation of time via NOAA formulae · Values are approximate, for illustration only';
+  document.getElementById('footer').textContent =
+    _view === 'sky' ? t('footer.sky') : t('footer.eot');
 }
 
 // ── Interaction ───────────────────────────────────────────────────────────────
 function setupInteraction() {
   const svg  = document.getElementById('chart');
   const info = document.getElementById('info');
-  const fmt  = new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric' });
 
   // Convert client coords → SVG viewBox coords
   function toSvg(clientX, clientY) {
@@ -956,39 +1040,39 @@ function setupInteraction() {
     const { icon, name: phaseName } = moonPhaseInfo(moon.phase);
     const illum = Math.round(moon.fraction * 100);
 
-    let rows = `<div class="info-date">${fmt.format(p.date)}</div>`;
+    let rows = `<div class="info-date">${fmtDate(p.date)}</div>`;
 
     if (_view === 'sky') {
       const azDir = p.azDeg < -0.05 ? `${Math.abs(p.azDeg).toFixed(1)}° E`
                   : p.azDeg >  0.05 ? `${p.azDeg.toFixed(1)}° W`
                   : 'S';
-      rows += `<div class="info-row"><span>Altitude</span><span>${p.altDeg.toFixed(1)}°</span></div>`;
-      rows += `<div class="info-row"><span>Azimuth</span><span>${azDir}</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.altitude')}</span><span>${p.altDeg.toFixed(1)}°</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.azimuth')}</span><span>${azDir}</span></div>`;
     } else {
       const eotSign = p.eot >= 0 ? '+' : '';
-      rows += `<div class="info-row"><span>Eq. of Time</span><span>${eotSign}${p.eot.toFixed(1)} min</span></div>`;
-      rows += `<div class="info-row"><span>Declination</span><span>${p.declDeg.toFixed(2)}°</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.eot')}</span><span>${eotSign}${p.eot.toFixed(1)} min</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.decl')}</span><span>${p.declDeg.toFixed(2)}°</span></div>`;
     }
     rows += `<hr class="info-sep">`;
 
     if (isPolarDay) {
-      rows += `<div class="info-polar">Sun up all day</div>`;
-      rows += `<div class="info-row"><span>Day length</span><span>24h 00m</span></div>`;
-      rows += `<div class="info-row"><span>Night length</span><span>0h 00m</span></div>`;
+      rows += `<div class="info-polar">${t('info.polarday')}</div>`;
+      rows += `<div class="info-row"><span>${t('info.daylength')}</span><span>24h 00m</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.nightlength')}</span><span>0h 00m</span></div>`;
     } else if (isPolarNight) {
-      rows += `<div class="info-polar">Sun never rises</div>`;
-      rows += `<div class="info-row"><span>Day length</span><span>0h 00m</span></div>`;
-      rows += `<div class="info-row"><span>Night length</span><span>24h 00m</span></div>`;
+      rows += `<div class="info-polar">${t('info.polarnight')}</div>`;
+      rows += `<div class="info-row"><span>${t('info.daylength')}</span><span>0h 00m</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.nightlength')}</span><span>24h 00m</span></div>`;
     } else {
       const srStr = toSolarTimeStr(times.sunrise, lon) || '—';
       const ssStr = toSolarTimeStr(times.sunset,  lon) || '—';
-      rows += `<div class="info-row"><span>Sunrise</span><span>${srStr}</span></div>`;
-      rows += `<div class="info-row"><span>Sunset</span><span>${ssStr}</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.sunrise')}</span><span>${srStr}</span></div>`;
+      rows += `<div class="info-row"><span>${t('info.sunset')}</span><span>${ssStr}</span></div>`;
       if (sunriseOk && sunsetOk) {
         const dayMs   = times.sunset - times.sunrise;
         const nightMs = 864e5 - dayMs;
-        rows += `<div class="info-row"><span>Day length</span><span>${fmtDuration(dayMs)}</span></div>`;
-        rows += `<div class="info-row"><span>Night length</span><span>${fmtDuration(nightMs)}</span></div>`;
+        rows += `<div class="info-row"><span>${t('info.daylength')}</span><span>${fmtDuration(dayMs)}</span></div>`;
+        rows += `<div class="info-row"><span>${t('info.nightlength')}</span><span>${fmtDuration(nightMs)}</span></div>`;
       }
     }
 
@@ -1082,7 +1166,7 @@ function setupLocationControls() {
       if (sepAfter > 0 && i === sepAfter) {
         const sep = document.createElement('li');
         sep.className   = 'drop-sep';
-        sep.textContent = '🌐 online results';
+        sep.textContent = t('drop.online');
         cityDrop.appendChild(sep);
       }
       const li = document.createElement('li');
@@ -1150,7 +1234,7 @@ function setupLocationControls() {
       clearTimeout(timeout);
       if (q !== _liveQuery) return;
       // offline/timeout — show notice only when bundled list is also empty
-      if (bundled.length === 0) showDropNotice('⚠ offline — bundled cities only');
+      if (bundled.length === 0) showDropNotice(t('drop.offline'));
     }
   }
 
@@ -1268,10 +1352,31 @@ function setupFolds() {
   });
 }
 
+// ── Language toggle ───────────────────────────────────────────────────────────
+function applyLang() {
+  document.documentElement.lang = _lang;
+  document.querySelectorAll('[data-i18n]').forEach(node => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.getElementById('cityInput').placeholder = t('loc.placeholder');
+  document.getElementById('btnLang').textContent    = t('lang.toggle');
+  _pinned = false; _pinnedDoy = null;
+  document.getElementById('info').style.display = 'none';
+  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+}
+
+function setupLangToggle() {
+  document.getElementById('btnLang').addEventListener('click', () => {
+    _lang = _lang === 'en' ? 'pl' : 'en';
+    applyLang();
+  });
+}
+
 render();
 setupInteraction();
 setupLocationControls();
 setupFolds();
+setupLangToggle();
 
 // ── View toggle ───────────────────────────────────────────────────────────────
 document.getElementById('btnSky').addEventListener('click', () => {

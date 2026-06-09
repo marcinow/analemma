@@ -27,7 +27,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 8a | Fold/unfold Location & Time control lines | ✅ Done | 4, 5 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
 | 10 | Theme toggle (dark default) | 📋 Todo | 1 |
-| 11 | Language toggle (EN/PL) | 📋 Todo | 3 |
+| 11 | Language toggle (EN/PL) | ✅ Done | 3 |
 | 12 | Shareable URL state | 📋 Todo | 4, 5, 7, 10 |
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
 
@@ -229,11 +229,21 @@ The controls bar is getting crowded. Make the **Location** and **Time** control 
 
 ## Issue 11 — Language toggle (EN/PL)
 
-**Status:** 📋 Todo · **Depends on:** 3 · **PRD:** FR‑14
+**Status:** ✅ Done · **Depends on:** 3 · **PRD:** FR‑14
 
 - Add an **EN/PL string dictionary** and toggle; localize UI labels, month names, Moon-phase names, and date/number formatting via `Intl`.
 
 **Done when:** switching language updates all visible text and formats; no untranslated strings.
+
+### Delivered
+
+- **`STRINGS` dictionary** — two-locale (`en`/`pl`) object covering all UI keys: control labels (`ctrl.location`, `ctrl.time`, `ctrl.sky`, `ctrl.eot`, `ctrl.markers`), location labels (`loc.lat`, `loc.lon`, `loc.placeholder`), time slider label, info-panel keys (`info.altitude`, `info.azimuth`, `info.eot`, `info.decl`, `info.sunrise`, `info.sunset`, `info.daylength`, `info.nightlength`, `info.polarday`, `info.polarnight`), all 8 moon-phase names, axis labels for both views, horizon/equator labels, `marker.today`, 12-month abbreviations, footer text, dropdown status strings, subtitle strings, and the toggle button label itself
+- **`t(key)` helper** — single lookup with `en` fallback so untranslated keys never surface as blank
+- **`applyLang()` function** — updates `html[lang]`, re-renders all `[data-i18n]` nodes, syncs the city-input placeholder and the `#btnLang` label, clears any pinned tooltip, and triggers a full re-render so the SVG axis labels, month ticks, equator/horizon labels, and "Today" marker all switch language immediately
+- **`#btnLang` button** — always visible in the header; shows the *target* language (`PL` when EN is active, `EN` when PL is active); toggles `_lang` and calls `applyLang()` on click
+- **Date formatting via `Intl`** — `formatDate()` and the marker date strings use `Intl.DateTimeFormat` / `toLocaleString` with the active locale (`'en'` / `'pl'`), so month names in the info panel and SVG markers follow the locale automatically
+- **Moon-phase names** — `moonPhaseInfo()` resolves the phase name through `t(key)` so all 8 names switch language on toggle
+- **`test/issue11-language-toggle.mjs`**: 36 Playwright tests covering default EN state, toggle to PL (all `data-i18n` nodes, placeholder, SVG axis labels, month abbreviations, info-panel labels, EoT-view labels), toggle back to EN (labels revert, English months return, Polish months absent), and zero JS errors throughout
 
 ## Issue 12 — Shareable URL state
 
