@@ -21,7 +21,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 3 | Rich per-day info panel | ✅ Done | 2 |
 | 4 | Time-of-day slider | ✅ Done | 1 |
 | 5 | Location: bundled cities + manual lat/long | ✅ Done | 1 |
-| 6 | Location: live geocoding search | 📋 Todo | 5 |
+| 6 | Location: live geocoding search | ✅ Done | 5 |
 | 7 | EoT × Declination projection toggle | 📋 Todo | 1 |
 | 8 | Markers + "today" | 📋 Todo | 1 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
@@ -138,11 +138,19 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 6 — Location: live geocoding search
 
-**Status:** 📋 Todo · **Depends on:** 5 · **PRD:** FR‑8
+**Status:** ✅ Done · **Depends on:** 5 · **PRD:** FR‑8
 
 - When a search isn't in the bundled list, query the **Open‑Meteo Geocoding API** (no key) and resolve coordinates; **degrade gracefully offline** with a notice.
 
 **Done when:** an arbitrary city resolves when online; offline falls back to bundled list + manual entry without errors.
+
+### Delivered
+
+- **Debounced live search**: 400 ms after the user stops typing, fires a request to `https://geocoding-api.open-meteo.com/v1/search` (no API key, CORS-enabled); a 5 s `AbortController` timeout prevents hanging
+- **Incremental dropdown**: bundled matches appear instantly; live-only results are appended below a `🌐 online results` separator once the response arrives — no flicker or replacement of already-visible results
+- **Deduplication**: results already present in the bundled list are filtered out before appending
+- **Graceful offline degradation**: if the fetch fails or times out and the bundled list is also empty, the dropdown shows `⚠ offline — bundled cities only`; if bundled results exist, the failure is silent
+- **Stale-query guard**: in-flight responses whose query no longer matches the current input are discarded
 
 ## Issue 7 — EoT × Declination projection toggle
 

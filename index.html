@@ -163,6 +163,15 @@
       white-space: nowrap;
     }
     #cityDrop li:hover, #cityDrop li.ac-active { background: var(--border); color: var(--accent); }
+    #cityDrop li.drop-sep {
+      padding: .18rem .65rem;
+      font-size: .72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      cursor: default;
+      pointer-events: none;
+      user-select: none;
+    }
     .coord-input {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -823,8 +832,10 @@ function setupLocationControls() {
   latInput.value  = DEFAULT.lat.toFixed(4);
   lonInput.value  = DEFAULT.lon.toFixed(4);
 
-  let activeIdx = -1;
-  let _matches  = [];
+  let activeIdx  = -1;
+  let _matches   = [];   // selectable items (separator items excluded)
+  let _liveTimer = null;
+  let _liveQuery = '';
 
   function triggerRender(lat, lon, name) {
     const lmstHour = parseInt(_slider.value, 10) / 60;
@@ -833,20 +844,33 @@ function setupLocationControls() {
     render({ lat, lon, name }, lmstHour, YEAR);
   }
 
-  function openDrop(matches) {
+  // sepAfter: insert an "online results" separator before this index (-1 = none)
+  function openDrop(matches, sepAfter = -1) {
     _matches  = matches;
     activeIdx = -1;
     cityDrop.innerHTML = '';
     if (!matches.length) { cityDrop.classList.remove('open'); return; }
-    for (const c of matches) {
+    for (const [i, c] of matches.entries()) {
+      if (sepAfter > 0 && i === sepAfter) {
+        const sep = document.createElement('li');
+        sep.className   = 'drop-sep';
+        sep.textContent = '🌐 online results';
+        cityDrop.appendChild(sep);
+      }
       const li = document.createElement('li');
-      li.textContent = `${c.name}, ${c.country}`;
-      li.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        selectCity(c);
-      });
+      li.textContent = c.admin1 ? `${c.name}, ${c.admin1}, ${c.country}` : `${c.name}, ${c.country}`;
+      li.addEventListener('pointerdown', e => { e.preventDefault(); selectCity(c); });
       cityDrop.appendChild(li);
     }
+    cityDrop.classList.add('open');
+  }
+
+  function showDropNotice(msg) {
+    cityDrop.innerHTML = '';
+    const li = document.createElement('li');
+    li.className   = 'drop-sep';
+    li.textContent = msg;
+    cityDrop.appendChild(li);
     cityDrop.classList.add('open');
   }
 
@@ -871,28 +895,63 @@ function setupLocationControls() {
     ).slice(0, 8);
   }
 
+  // Live geocoding via Open-Meteo (no API key, CORS-enabled)
+  async function fetchLive(q, bundled) {
+    if (q !== _liveQuery) return;
+    let controller, timeout;
+    try {
+      controller = new AbortController();
+      timeout    = setTimeout(() => controller.abort(), 5000);
+      const url  = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`;
+      const res  = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (q !== _liveQuery) return;
+      if (!res.ok) return;
+      const data = await res.json();
+      if (q !== _liveQuery) return;
+
+      const bundledKeys = new Set(bundled.map(c => `${c.name.toLowerCase()}|${c.country.toLowerCase()}`));
+      const live = (data.results || [])
+        .map(r => ({ name: r.name, country: r.country_code, admin1: r.admin1 || '', lat: r.latitude, lon: r.longitude }))
+        .filter(c => !bundledKeys.has(`${c.name.toLowerCase()}|${c.country.toLowerCase()}`))
+        .slice(0, 6);
+
+      if (!live.length) return;
+      openDrop([...bundled, ...live], bundled.length);
+    } catch {
+      clearTimeout(timeout);
+      if (q !== _liveQuery) return;
+      // offline/timeout — show notice only when bundled list is also empty
+      if (bundled.length === 0) showDropNotice('⚠ offline — bundled cities only');
+    }
+  }
+
   cityInput.addEventListener('input', () => {
     const q = cityInput.value.trim();
-    openDrop(q ? filterCities(q) : []);
+    clearTimeout(_liveTimer);
+    if (!q) { closeDrop(); _liveQuery = ''; return; }
+    const bundled = filterCities(q);
+    openDrop(bundled);
+    _liveQuery = q;
+    _liveTimer = setTimeout(() => fetchLive(q, bundled), 400);
   });
 
   cityInput.addEventListener('keydown', e => {
-    const items = cityDrop.querySelectorAll('li');
+    const selectables = [...cityDrop.querySelectorAll('li:not(.drop-sep)')];
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      activeIdx = Math.min(activeIdx + 1, items.length - 1);
-      items.forEach((li, i) => li.classList.toggle('ac-active', i === activeIdx));
+      activeIdx = Math.min(activeIdx + 1, selectables.length - 1);
+      selectables.forEach((li, i) => li.classList.toggle('ac-active', i === activeIdx));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       activeIdx = Math.max(activeIdx - 1, -1);
-      items.forEach((li, i) => li.classList.toggle('ac-active', i === activeIdx));
+      selectables.forEach((li, i) => li.classList.toggle('ac-active', i === activeIdx));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeIdx >= 0 && _matches[activeIdx]) {
         selectCity(_matches[activeIdx]);
       } else {
         closeDrop();
-        // Try exact match
         const q = cityInput.value.trim();
         const exact = CITIES.find(c => c.name.toLowerCase() === q.toLowerCase());
         if (exact) selectCity(exact);
