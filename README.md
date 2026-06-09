@@ -2,6 +2,8 @@
 
 https://marcinow.github.io/analemma/
 
+![QR Code](analemma-qr-code.png)
+
 ## Plan with Opus model
 
 ```I would like to create a standalone web page to present an interactive drawing of analemma. Moving mouse or cursor over analemma should present a date related to the position and provide additional information day/night duration, sunset/sunrise time, phase of the Moon. To draw proper analemma for a given geo location I can select a city or provide lattitude an longitude. Help me to plan such web page. Suggest tech stack, discuss with me UX, etc. Help me to plan the app and create a prd file (Product Requirements Document) that will be used further to build / implement the app.```
