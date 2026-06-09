@@ -30,6 +30,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 11 | Language toggle (EN/PL) | ✅ Done | 3 |
 | 12 | Shareable URL state | ✅ Done | 4, 5, 7, 10 |
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
+| 14 | Pinned point in shareable URL | ✅ Done | 2, 12 |
 
 ---
 
@@ -280,3 +281,26 @@ The controls bar is getting crowded. Make the **Location** and **Time** control 
 - Refine **touch** ergonomics and responsive layout (≥320 px); ensure **keyboard-operable** controls and screen-reader-readable info panel; finalize **footer attribution** (SunCalc, Open‑Meteo) + accuracy caveat.
 
 **Done when:** the page is comfortable on mobile, keyboard-navigable, and shows correct attributions/caveats.
+
+## Issue 14 — Pinned point in shareable URL
+
+**Status:** ✅ Done · **Depends on:** 2, 12 · **PRD:** FR‑5, FR‑16
+
+When the user **clicks/taps a point** on the analemma and the **sticky info panel** is pinned for that date, that pinned selection should be part of the **shareable URL** so a copied link reopens with the same point selected and its info panel shown.
+
+- Extend the URL-hash state (Issue 12) with the **pinned day** as a **user-friendly `pinday=DD_MM`** value (e.g. January 6 → `pinday=06_01`, internally day index 5); add it to `updateHash()` when a point is pinned and **remove it when the pin is cleared** (unpin, slider/view/location change that resets the pin).
+- On load, `parseHash()` restores the pinned day: convert `DD_MM` back to the day index, re-select the corresponding daily sample, draw the highlight ring, and show the pinned info panel — consistent with the active view (Sky / EoT) and language.
+- Validate the day against the loaded year (365/366); ignore a malformed or overflow value (bad format, `00_01`, month > 12, Feb 29 in a common year) without breaking the rest of the hash restore.
+
+**Done when:** pinning a point adds a `pinday=DD_MM` to the URL; opening that URL in a fresh tab restores the same selected point with its info panel pinned; clearing the pin removes it from the URL.
+
+### Delivered
+
+- **`doyToPinday(doy, year)` / `pindayToDoy(pinday, year)` helpers** — convert between the internal 0-based day-of-year index and the user-friendly `DD_MM` string (e.g. doy 5 ↔ `06_01` for January 6); `pindayToDoy` rejects malformed strings and overflow dates (`31_02`, `00_01`, month 13, Feb 29 in a non-leap year)
+- **`updateHash()` extended** — when `_pinned` is true, encodes `pinday=<DD_MM>` in the URL hash; when the pin is cleared the param is absent
+- **`parseHash()` extended** — parses the `pinday` param via `pindayToDoy` against the hash's `year`; returns `pinnedDoy: null` for missing/invalid values so the rest of hash restore is unaffected
+- **`pointerdown` handler** — calls `updateHash()` on every pin/unpin/miss action so the URL stays in sync as the user interacts
+- **Bootstrap block** — restores `_pinnedDoy` and `_pinned = true` before the first render when the hash contains a valid `pinday`
+- **Pin restoration after `setupInteraction()`** — looks up the stored `doy` in `_pts`, converts its SVG coordinates to screen coordinates via `getScreenCTM()`, then calls `showInfo` to display the pinned panel at the correct position; clears the pin state gracefully if the doy is not found in the current year's points
+- **`_showInfoFn`** — module-level reference assigned inside `setupInteraction` so the restoration block can invoke `showInfo` after setup is complete
+- **`test/issue14-pinned-point-url.mjs`**: 56 Playwright assertions covering no-pin on plain load, `pinday` written on click (DD_MM matches clicked day), unpin/empty-area/slider/view/location all clearing `pinday`, full round-trip restore (`pinday=11_04` → April 11), and five invalid-value cases ignored gracefully
