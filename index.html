@@ -62,7 +62,7 @@
     .ax-title  { fill: var(--muted); font-size: 11px; font-family: inherit; }
     .h-label   { fill: var(--muted); font-size: 10px; font-family: inherit; font-style: italic; }
 
-    /* Info tooltip */
+    /* Info panel */
     #info {
       display: none;
       position: fixed;
@@ -70,14 +70,21 @@
       pointer-events: none;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: .35rem .65rem;
-      font-size: .82rem;
+      border-radius: 8px;
+      padding: .55rem .75rem;
+      font-size: .8rem;
       color: var(--text);
-      white-space: nowrap;
-      box-shadow: 0 4px 18px rgba(0,0,0,.5);
+      min-width: 210px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.55);
+      line-height: 1.5;
     }
     #info.pinned { border-color: var(--accent); }
+    .info-date  { font-weight: 600; font-size: .88rem; margin-bottom: .3rem; color: var(--accent); }
+    .info-row   { display: flex; justify-content: space-between; gap: 1rem; }
+    .info-row span:first-child { color: var(--muted); }
+    .info-sep   { border: none; border-top: 1px solid var(--border); margin: .3rem 0; }
+    .info-moon  { color: var(--muted); margin-top: .2rem; font-size: .77rem; }
+    .info-polar { color: var(--muted); font-style: italic; }
 
     footer {
       padding: .45rem 1.5rem;
@@ -200,11 +207,45 @@ const el = (tag, attrs = {}, text) => {
 
 // ── Module-level interaction state ────────────────────────────────────────────
 let _pts       = [];
+let _loc       = { ...DEFAULT };
 let _pinned    = false;
 let _pinnedDoy = null;
 
+// ── Astronomy helpers ─────────────────────────────────────────────────────────
+function moonPhaseInfo(phase) {
+  const phases = [
+    [0.0625, '🌑', 'New Moon'],
+    [0.1875, '🌒', 'Waxing Crescent'],
+    [0.3125, '🌓', 'First Quarter'],
+    [0.4375, '🌔', 'Waxing Gibbous'],
+    [0.5625, '🌕', 'Full Moon'],
+    [0.6875, '🌖', 'Waning Gibbous'],
+    [0.8125, '🌗', 'Last Quarter'],
+    [0.9375, '🌘', 'Waning Crescent'],
+  ];
+  for (const [limit, icon, name] of phases) if (phase < limit) return { icon, name };
+  return { icon: '🌑', name: 'New Moon' };
+}
+
+function fmtDuration(ms) {
+  if (ms <= 0) return '0h 0m';
+  const h = Math.floor(ms / 3600000);
+  const m = Math.round((ms % 3600000) / 60000);
+  return `${h}h ${m < 10 ? '0' : ''}${m}m`;
+}
+
+function toSolarTimeStr(date, lon) {
+  if (!date || isNaN(date.getTime())) return null;
+  let lmst = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600 + lon / 15;
+  lmst = ((lmst % 24) + 24) % 24;
+  const h = Math.floor(lmst);
+  const m = Math.round((lmst % 1) * 60);
+  return `${String(h).padStart(2,'0')}:${String(m === 60 ? 0 : m).padStart(2,'0')}`;
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
+  _loc = { lat, lon, name };
   const svg = document.getElementById('chart');
   svg.innerHTML = '';
 
@@ -387,16 +428,64 @@ function setupInteraction() {
     hl.setAttribute('cx', p.sx.toFixed(2));
     hl.setAttribute('cy', p.sy.toFixed(2));
 
-    info.textContent = fmt.format(p.date);
-    info.classList.toggle('pinned', _pinned);
-    info.style.display = '';
+    const { lat, lon } = _loc;
+    const times = SunCalc.getTimes(p.date, lat, lon);
+    const moon  = SunCalc.getMoonIllumination(p.date);
 
-    // Position tooltip near cursor, clamped to viewport
+    const sunriseOk = times.sunrise && !isNaN(times.sunrise.getTime());
+    const sunsetOk  = times.sunset  && !isNaN(times.sunset.getTime());
+
+    // Polar day/night: no sunrise/sunset but sun clearly above or below horizon
+    const isPolarDay   = !sunriseOk && p.altDeg > 0;
+    const isPolarNight = !sunriseOk && p.altDeg <= 0;
+
+    const azDir = p.azDeg < -0.05 ? `${Math.abs(p.azDeg).toFixed(1)}° E`
+                : p.azDeg >  0.05 ? `${p.azDeg.toFixed(1)}° W`
+                : 'S';
+
+    const { icon, name: phaseName } = moonPhaseInfo(moon.phase);
+    const illum = Math.round(moon.fraction * 100);
+
+    let rows = `<div class="info-date">${fmt.format(p.date)}</div>`;
+    rows += `<div class="info-row"><span>Altitude</span><span>${p.altDeg.toFixed(1)}°</span></div>`;
+    rows += `<div class="info-row"><span>Azimuth</span><span>${azDir}</span></div>`;
+    rows += `<hr class="info-sep">`;
+
+    if (isPolarDay) {
+      rows += `<div class="info-polar">Sun up all day</div>`;
+      rows += `<div class="info-row"><span>Day length</span><span>24h 00m</span></div>`;
+      rows += `<div class="info-row"><span>Night length</span><span>0h 00m</span></div>`;
+    } else if (isPolarNight) {
+      rows += `<div class="info-polar">Sun never rises</div>`;
+      rows += `<div class="info-row"><span>Day length</span><span>0h 00m</span></div>`;
+      rows += `<div class="info-row"><span>Night length</span><span>24h 00m</span></div>`;
+    } else {
+      const srStr = toSolarTimeStr(times.sunrise, lon) || '—';
+      const ssStr = toSolarTimeStr(times.sunset,  lon) || '—';
+      rows += `<div class="info-row"><span>Sunrise</span><span>${srStr}</span></div>`;
+      rows += `<div class="info-row"><span>Sunset</span><span>${ssStr}</span></div>`;
+      if (sunriseOk && sunsetOk) {
+        const dayMs   = times.sunset - times.sunrise;
+        const nightMs = 864e5 - dayMs;
+        rows += `<div class="info-row"><span>Day length</span><span>${fmtDuration(dayMs)}</span></div>`;
+        rows += `<div class="info-row"><span>Night length</span><span>${fmtDuration(nightMs)}</span></div>`;
+      }
+    }
+
+    rows += `<hr class="info-sep">`;
+    rows += `<div class="info-moon">${icon} ${phaseName} · ${illum}%</div>`;
+
+    info.innerHTML = rows;
+    info.classList.toggle('pinned', _pinned);
+    info.style.display = 'block';
+
+    // Position panel near cursor, clamped to viewport
     const vw = window.innerWidth, vh = window.innerHeight;
-    const iw = info.offsetWidth || 110, ih = info.offsetHeight || 30;
-    let left = clientX + 14, top = clientY - 14;
-    if (left + iw > vw - 8) left = clientX - iw - 10;
-    if (top < 8) top = clientY + 14;
+    const iw = info.offsetWidth  || 220;
+    const ih = info.offsetHeight || 160;
+    let left = clientX + 16, top = clientY - 20;
+    if (left + iw > vw - 8) left = clientX - iw - 12;
+    if (top < 8) top = clientY + 12;
     if (top + ih > vh - 8) top = vh - ih - 8;
     info.style.left = left + 'px';
     info.style.top  = top  + 'px';

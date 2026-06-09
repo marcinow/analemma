@@ -18,7 +18,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 |---|-------|--------|------------|
 | 1 | Walking skeleton: static analemma | ✅ Done | — |
 | 2 | Hover/tap a point → date | ✅ Done | 1 |
-| 3 | Rich per-day info panel | 📋 Todo | 2 |
+| 3 | Rich per-day info panel | ✅ Done | 2 |
 | 4 | Time-of-day slider | 📋 Todo | 1 |
 | 5 | Location: bundled cities + manual lat/long | 📋 Todo | 1 |
 | 6 | Location: live geocoding search | 📋 Todo | 5 |
@@ -85,12 +85,22 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 3 — Rich per-day info panel
 
-**Status:** 📋 Todo · **Depends on:** 2 · **PRD:** FR‑5, FR‑6
+**Status:** ✅ Done · **Depends on:** 2 · **PRD:** FR‑5, FR‑6
 
 - Extend the panel with **sun altitude/azimuth, day length, night length, sunrise, sunset** (`SunCalc.getTimes`) and **Moon phase** name + icon + illumination % (`getMoonIllumination`).
 - Handle **polar day/night** messaging instead of NaN.
 
 **Done when:** every field populates for a hovered date and a spot-checked sunrise/sunset matches a known reference; polar latitudes show friendly messages.
+
+### Delivered
+
+- **Sun altitude & azimuth** shown for each hovered date (azimuth expressed as `°E` / `°W` from south)
+- **Sunrise & sunset** times displayed in Local Mean Solar Time (`UTC + lon/15`)
+- **Day length & night length** derived from `sunset − sunrise`
+- **Moon phase** name, Unicode icon (🌑–🌘), and illumination % via `getMoonIllumination`
+- **Polar day/night** handled: "Sun up all day" / "Sun never rises" + corrected 24h/0h durations shown instead of NaN when SunCalc returns invalid dates
+- **Info panel layout** redesigned with a date heading, two-column key/value rows, and a separator before the moon line
+- Fixed pre-existing **`display: none` regression** from Issue 2: `info.style.display` was being reset to `''` (reverting to CSS `none`) instead of `'block'`
 
 ## Issue 4 — Time-of-day slider
 

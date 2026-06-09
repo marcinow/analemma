@@ -12,3 +12,4 @@
 ``` mark Issue N as Done, also add what was delivered and what to verify (text above) to the issue description in ISSUES.md file ```
 
 * Restart Claude session to refresh context (when tokens > 40% ?)
+With full context (52%) I was asked to verify new functionality (on web page) manually. With fresh context testing was done automatically with chromium/playwright and a display issue was found/fixed.
