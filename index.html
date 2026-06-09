@@ -108,6 +108,24 @@
       color: var(--text);
       min-width: 3em;
     }
+    .ctrl-sep { color: var(--border); }
+    .view-btns {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .view-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: .2rem .65rem;
+      font-size: .78rem;
+      font-family: inherit;
+    }
+    .view-btn:hover { background: var(--border); }
+    .view-btn.active { background: var(--border); color: var(--text); }
 
     footer {
       padding: .45rem 1.5rem;
@@ -224,6 +242,10 @@
   <label for="timeSlider">Time (LMST)</label>
   <input type="range" id="timeSlider" min="0" max="1439" step="1" value="720">
   <span id="timeReadout">12:00</span>
+  <span class="ctrl-sep">|</span>
+  <span class="view-btns">
+    <button id="btnSky" class="view-btn active">Sky</button><button id="btnEot" class="view-btn">EoT</button>
+  </span>
 </div>
 
 <main>
@@ -232,7 +254,7 @@
 
 <div id="info"></div>
 
-<footer>
+<footer id="footer">
   Sky view · azimuth × altitude · Solar positions via SunCalc (MIT) · Values are approximate, for illustration only
 </footer>
 
@@ -300,6 +322,41 @@ const SunCalc = (() => {
 const DEFAULT = { lat: 52.2297, lon: 21.0122, name: 'Warsaw' };
 const YEAR    = new Date().getFullYear();
 const R2D     = 180 / Math.PI;
+
+// ── NOAA: Equation of Time + Declination ─────────────────────────────────────
+// Returns { eot: minutes, declDeg: degrees } for a given Date.
+function solarEoTDecl(date) {
+  const PI  = Math.PI;
+  const JD  = date.valueOf() / 86400000 + 2440587.5;
+  const T   = (JD - 2451545.0) / 36525.0;                         // Julian centuries from J2000
+  const L0  = ((280.46646 + T * (36000.76983 + T * 0.0003032)) % 360 + 360) % 360;  // deg
+  const M   = 357.52911 + T * (35999.05029 - 0.0001537 * T);      // deg
+  const e   = 0.016708634 - T * (0.000042037 + 0.0000001267 * T); // eccentricity
+  const eps0 = 23 + (26 + (21.448 - T * (46.8150 + T * (0.00059 - T * 0.001813))) / 60) / 60; // mean obliquity, deg
+  const omega = 125.04452 - 1934.136261 * T;
+  const eps   = eps0 + 0.00256 * Math.cos(omega * PI / 180);       // corrected obliquity, deg
+
+  const Mrad = M * PI / 180;
+  const C = (1.914602 - T * (0.004817 + 0.000014 * T)) * Math.sin(Mrad)
+          + (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad)
+          + 0.000289 * Math.sin(3 * Mrad);
+  const sunLon = L0 + C;                                            // true longitude, deg
+  const lambda = sunLon - 0.00569 - 0.00478 * Math.sin(omega * PI / 180); // apparent, deg
+
+  const declDeg = Math.asin(Math.sin(eps * PI / 180) * Math.sin(lambda * PI / 180)) * 180 / PI;
+
+  // EoT via NOAA y-formula (result in minutes)
+  const y    = Math.tan(eps * PI / 360) ** 2;                      // tan²(ε/2)
+  const L0r  = L0 * PI / 180;
+  const Mr   = M  * PI / 180;
+  const eot  = (y * Math.sin(2 * L0r)
+              - 2 * e * Math.sin(Mr)
+              + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r)
+              - 0.5 * y * y * Math.sin(4 * L0r)
+              - 1.25 * e * e * Math.sin(2 * Mr)) * (4 * 180 / PI);
+
+  return { eot, declDeg };
+}
 
 // ── Bundled city list (~150 major world cities) ───────────────────────────────
 const CITIES = [
@@ -476,12 +533,16 @@ function buildPoints(year, lat, lon, lmstHour = 12) {
   const utcH  = lmstHour - lon / 15;
   const pts   = [];
   for (let i = 0; i < days; i++) {
-    const ms  = Date.UTC(year, 0, 1 + i) + utcH * 3600000;
-    const pos = SunCalc.getPosition(new Date(ms), lat, lon);
+    const ms      = Date.UTC(year, 0, 1 + i) + utcH * 3600000;
+    const dayDate = new Date(Date.UTC(year, 0, 1 + i));
+    const pos     = SunCalc.getPosition(new Date(ms), lat, lon);
+    const { eot, declDeg } = solarEoTDecl(dayDate);
     pts.push({
-      date:   new Date(Date.UTC(year, 0, 1 + i)),
-      azDeg:  pos.azimuth  * R2D,
-      altDeg: pos.altitude * R2D,
+      date:    dayDate,
+      azDeg:   pos.azimuth  * R2D,
+      altDeg:  pos.altitude * R2D,
+      eot,
+      declDeg,
       doy:    i,
       sx: 0, sy: 0  // SVG coords, filled in render()
     });
@@ -503,6 +564,7 @@ let _pts       = [];
 let _loc       = { ...DEFAULT };
 let _pinned    = false;
 let _pinnedDoy = null;
+let _view      = 'sky';  // 'sky' | 'eot'
 
 // ── Astronomy helpers ─────────────────────────────────────────────────────────
 function moonPhaseInfo(phase) {
@@ -549,90 +611,132 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
 
   const pts = buildPoints(year, lat, lon, lmstHour);
 
-  // Compute axis bounds from data
-  const azValues  = pts.map(p => p.azDeg);
-  const altValues = pts.map(p => p.altDeg);
-  const azCenter  = (Math.max(...azValues) + Math.min(...azValues)) / 2;
-  const azHalf    = Math.max(Math.max(...azValues) - azCenter, azCenter - Math.min(...azValues));
-  const azPad     = Math.max(azHalf * 1.6, 3.5);
-  const azMin = azCenter - azPad, azMax = azCenter + azPad;
-  const altMax = Math.ceil((Math.max(...altValues) + 6) / 10) * 10;
-  const altMin = 0;
-
-  const xOf  = az  => M.left + (az  - azMin)  / (azMax  - azMin)  * pw;
-  const yOf  = alt => M.top  + ph  - (alt - altMin) / (altMax - altMin) * ph;
-  const horizY = yOf(0);
-
-  // Cache SVG coordinates on each point (used by hit-testing)
-  for (const p of pts) { p.sx = xOf(p.azDeg); p.sy = yOf(p.altDeg); }
-  _pts = pts;
-
-  // ── Defs: clip + sky gradient
+  // ── Defs: clip path (both views need it)
   const defs = el('defs');
   defs.appendChild((() => {
     const cp = el('clipPath', { id: 'pc' });
     cp.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph }));
     return cp;
   })());
-  const grad = el('linearGradient', { id: 'skyG', x1: 0, y1: 0, x2: 0, y2: 1 });
-  grad.appendChild(el('stop', { offset: '0%',   'stop-color': '#06111f' }));
-  grad.appendChild(el('stop', { offset: '100%', 'stop-color': '#0b1d31' }));
-  defs.appendChild(grad);
-  svg.appendChild(defs);
 
-  // ── Backgrounds
-  svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--bg)' }));
-  svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph,
-    fill: 'var(--surface)', rx: 3 }));
-  const skyH = Math.max(0, Math.min(horizY - M.top, ph));
-  if (skyH > 0) {
-    svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: skyH,
-      fill: 'url(#skyG)', 'clip-path': 'url(#pc)' }));
+  // ── View-specific: axis math, backgrounds, grid, labels
+  if (_view === 'sky') {
+    const azValues  = pts.map(p => p.azDeg);
+    const altValues = pts.map(p => p.altDeg);
+    const azCenter  = (Math.max(...azValues) + Math.min(...azValues)) / 2;
+    const azHalf    = Math.max(Math.max(...azValues) - azCenter, azCenter - Math.min(...azValues));
+    const azPad     = Math.max(azHalf * 1.6, 3.5);
+    const azMin = azCenter - azPad, azMax = azCenter + azPad;
+    const altMax = Math.ceil((Math.max(...altValues) + 6) / 10) * 10;
+    const altMin = 0;
+
+    const xOf  = az  => M.left + (az  - azMin)  / (azMax  - azMin)  * pw;
+    const yOf  = alt => M.top  + ph  - (alt - altMin) / (altMax - altMin) * ph;
+    const horizY = yOf(0);
+
+    for (const p of pts) { p.sx = xOf(p.azDeg); p.sy = yOf(p.altDeg); }
+
+    const grad = el('linearGradient', { id: 'skyG', x1: 0, y1: 0, x2: 0, y2: 1 });
+    grad.appendChild(el('stop', { offset: '0%',   'stop-color': '#06111f' }));
+    grad.appendChild(el('stop', { offset: '100%', 'stop-color': '#0b1d31' }));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--bg)' }));
+    svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph,
+      fill: 'var(--surface)', rx: 3 }));
+    const skyH = Math.max(0, Math.min(horizY - M.top, ph));
+    if (skyH > 0) {
+      svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: skyH,
+        fill: 'url(#skyG)', 'clip-path': 'url(#pc)' }));
+    }
+
+    // Altitude grid
+    for (let a = 0; a <= altMax; a += 10) {
+      const y = yOf(a);
+      if (y < M.top - 1 || y > M.top + ph + 1) continue;
+      svg.appendChild(el('line', { x1: M.left, y1: y, x2: M.left + pw, y2: y,
+        stroke: a === 0 ? '#1e3a5f' : 'var(--border)',
+        'stroke-width': a === 0 ? 1.5 : .5 }));
+      svg.appendChild(el('text', { x: M.left - 7, y: y + 3.5,
+        'text-anchor': 'end', class: 'tick-lbl' }, a + '°'));
+    }
+
+    // Azimuth grid
+    const azStep = azPad <= 5 ? 2 : azPad <= 9 ? 3 : 5;
+    for (let a = Math.ceil(azMin / azStep) * azStep; a <= azMax + .01; a += azStep) {
+      const x = xOf(a);
+      if (x < M.left - 1 || x > M.left + pw + 1) continue;
+      svg.appendChild(el('line', { x1: x, y1: M.top, x2: x, y2: M.top + ph,
+        stroke: Math.abs(a) < .01 ? '#1e3a5f' : 'var(--border)',
+        'stroke-width': Math.abs(a) < .01 ? 1 : .5,
+        'stroke-dasharray': Math.abs(a) < .01 ? '' : '4 3' }));
+      const lab = Math.abs(a) < .01 ? 'S' : a > 0 ? `${a}° W` : `${Math.abs(a)}° E`;
+      svg.appendChild(el('text', { x, y: M.top + ph + 15,
+        'text-anchor': 'middle', class: 'tick-lbl' }, lab));
+    }
+
+    svg.appendChild(el('text', { x: M.left + pw + 6, y: horizY + 3.5, class: 'h-label' }, 'Horizon'));
+
+    const midX = M.left + pw / 2, midY = M.top + ph / 2;
+    svg.appendChild(el('text', { x: 15, y: midY, transform: `rotate(-90,15,${midY})`,
+      'text-anchor': 'middle', class: 'ax-title' }, 'Altitude'));
+    svg.appendChild(el('text', { x: midX, y: H - 10, 'text-anchor': 'middle', class: 'ax-title' },
+      '← East   Azimuth from South   West →'));
+
+  } else {
+    // ── EoT × Declination view
+    const eotVals = pts.map(p => p.eot);
+    const eotMin  = Math.floor(Math.min(...eotVals) - 2);
+    const eotMax  = Math.ceil( Math.max(...eotVals) + 2);
+    const declMin = -25, declMax = 25;
+
+    const xOf = eot  => M.left + (eot  - eotMin)  / (eotMax  - eotMin)  * pw;
+    const yOf = decl => M.top  + ph   - (decl - declMin) / (declMax - declMin) * ph;
+
+    for (const p of pts) { p.sx = xOf(p.eot); p.sy = yOf(p.declDeg); }
+
+    svg.appendChild(defs);
+    svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--bg)' }));
+    svg.appendChild(el('rect', { x: M.left, y: M.top, width: pw, height: ph,
+      fill: 'var(--surface)', rx: 3 }));
+
+    // Declination grid (every 5°)
+    for (let d = -25; d <= 25; d += 5) {
+      const y = yOf(d);
+      svg.appendChild(el('line', { x1: M.left, y1: y, x2: M.left + pw, y2: y,
+        stroke: d === 0 ? '#1e3a5f' : 'var(--border)',
+        'stroke-width': d === 0 ? 1.5 : .5,
+        'stroke-dasharray': d === 0 ? '' : '4 3' }));
+      svg.appendChild(el('text', { x: M.left - 7, y: y + 3.5,
+        'text-anchor': 'end', class: 'tick-lbl' }, d + '°'));
+    }
+
+    // EoT grid (every 4 minutes)
+    for (let e = Math.ceil(eotMin / 4) * 4; e <= eotMax + .01; e += 4) {
+      const x = xOf(e);
+      if (x < M.left - 1 || x > M.left + pw + 1) continue;
+      svg.appendChild(el('line', { x1: x, y1: M.top, x2: x, y2: M.top + ph,
+        stroke: Math.abs(e) < .01 ? '#1e3a5f' : 'var(--border)',
+        'stroke-width': Math.abs(e) < .01 ? 1 : .5,
+        'stroke-dasharray': Math.abs(e) < .01 ? '' : '4 3' }));
+      const lab = e === 0 ? '0' : e > 0 ? `+${e}` : String(e);
+      svg.appendChild(el('text', { x, y: M.top + ph + 15,
+        'text-anchor': 'middle', class: 'tick-lbl' }, lab));
+    }
+
+    svg.appendChild(el('text', { x: M.left + pw + 6, y: yOf(0) + 3.5, class: 'h-label' }, 'Equator'));
+
+    const midX = M.left + pw / 2, midY = M.top + ph / 2;
+    svg.appendChild(el('text', { x: 15, y: midY, transform: `rotate(-90,15,${midY})`,
+      'text-anchor': 'middle', class: 'ax-title' }, 'Declination (°)'));
+    svg.appendChild(el('text', { x: midX, y: H - 10, 'text-anchor': 'middle', class: 'ax-title' },
+      '← fast   Equation of Time (min)   slow →'));
   }
 
-  // ── Altitude grid lines
-  for (let a = 0; a <= altMax; a += 10) {
-    const y = yOf(a);
-    if (y < M.top - 1 || y > M.top + ph + 1) continue;
-    svg.appendChild(el('line', {
-      x1: M.left, y1: y, x2: M.left + pw, y2: y,
-      stroke: a === 0 ? '#1e3a5f' : 'var(--border)',
-      'stroke-width': a === 0 ? 1.5 : .5
-    }));
-    svg.appendChild(el('text', { x: M.left - 7, y: y + 3.5,
-      'text-anchor': 'end', class: 'tick-lbl' }, a + '°'));
-  }
+  _pts = pts;
 
-  // ── Azimuth grid lines
-  const azStep = azPad <= 5 ? 2 : azPad <= 9 ? 3 : 5;
-  for (let a = Math.ceil(azMin / azStep) * azStep; a <= azMax + .01; a += azStep) {
-    const x = xOf(a);
-    if (x < M.left - 1 || x > M.left + pw + 1) continue;
-    svg.appendChild(el('line', {
-      x1: x, y1: M.top, x2: x, y2: M.top + ph,
-      stroke: Math.abs(a) < .01 ? '#1e3a5f' : 'var(--border)',
-      'stroke-width': Math.abs(a) < .01 ? 1 : .5,
-      'stroke-dasharray': Math.abs(a) < .01 ? '' : '4 3'
-    }));
-    const lab = Math.abs(a) < .01 ? 'S' : a > 0 ? `${a}° W` : `${Math.abs(a)}° E`;
-    svg.appendChild(el('text', { x, y: M.top + ph + 15,
-      'text-anchor': 'middle', class: 'tick-lbl' }, lab));
-  }
-
-  // ── Horizon label
-  svg.appendChild(el('text', { x: M.left + pw + 6, y: horizY + 3.5, class: 'h-label' }, 'Horizon'));
-
-  // ── Axis titles
-  const midX = M.left + pw / 2, midY = M.top + ph / 2;
-  svg.appendChild(el('text', {
-    x: 15, y: midY, transform: `rotate(-90,15,${midY})`,
-    'text-anchor': 'middle', class: 'ax-title'
-  }, 'Altitude'));
-  svg.appendChild(el('text', {
-    x: midX, y: H - 10, 'text-anchor': 'middle', class: 'ax-title'
-  }, '← East   Azimuth from South   West →'));
-
-  // ── Analemma path
+  // ── Analemma path (both views)
   const pathD = pts.map((p, i) =>
     `${i ? 'L' : 'M'}${p.sx.toFixed(2)},${p.sy.toFixed(2)}`
   ).join('') + 'Z';
@@ -643,7 +747,7 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
     opacity: .9, 'clip-path': 'url(#pc)'
   }));
 
-  // ── Dots (pointer-events:none so the hit-rect captures events cleanly)
+  // ── Dots
   const now      = new Date();
   const todayDoy = Math.floor(
     (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(now.getFullYear(), 0, 1)) / 864e5
@@ -671,14 +775,14 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
     }, 'Today'));
   }
 
-  // ── Highlight ring (hidden until hover; on top of everything)
+  // ── Highlight ring
   svg.appendChild(el('circle', {
     id: 'hl', r: 7, cx: -100, cy: -100,
     fill: 'rgba(245,166,35,.18)', stroke: 'var(--accent)', 'stroke-width': 2,
     'pointer-events': 'none', 'clip-path': 'url(#pc)'
   }));
 
-  // ── Transparent hit rect (on top, captures all pointer events over plot)
+  // ── Transparent hit rect
   svg.appendChild(el('rect', {
     id: 'hit', x: M.left, y: M.top, width: pw, height: ph,
     fill: 'transparent'
@@ -687,8 +791,13 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
   // ── Subtitle
   const h = Math.floor(lmstHour), mm = Math.round((lmstHour % 1) * 60);
   const timeStr = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  const viewLabel = _view === 'sky' ? 'Sky' : 'EoT × Decl';
   document.getElementById('subtitle').textContent =
-    `${name} · ${year} · LMST ${timeStr}`;
+    `${name} · ${year} · LMST ${timeStr} · ${viewLabel}`;
+
+  document.getElementById('footer').textContent = _view === 'sky'
+    ? 'Sky view · azimuth × altitude · Solar positions via SunCalc (MIT) · Values are approximate, for illustration only'
+    : 'EoT × Declination view · location-independent · Equation of time via NOAA formulae · Values are approximate, for illustration only';
 }
 
 // ── Interaction ───────────────────────────────────────────────────────────────
@@ -729,19 +838,25 @@ function setupInteraction() {
     const sunsetOk  = times.sunset  && !isNaN(times.sunset.getTime());
 
     // Polar day/night: no sunrise/sunset but sun clearly above or below horizon
-    const isPolarDay   = !sunriseOk && p.altDeg > 0;
-    const isPolarNight = !sunriseOk && p.altDeg <= 0;
-
-    const azDir = p.azDeg < -0.05 ? `${Math.abs(p.azDeg).toFixed(1)}° E`
-                : p.azDeg >  0.05 ? `${p.azDeg.toFixed(1)}° W`
-                : 'S';
+    const isPolarDay   = _view === 'sky' && !sunriseOk && p.altDeg > 0;
+    const isPolarNight = _view === 'sky' && !sunriseOk && p.altDeg <= 0;
 
     const { icon, name: phaseName } = moonPhaseInfo(moon.phase);
     const illum = Math.round(moon.fraction * 100);
 
     let rows = `<div class="info-date">${fmt.format(p.date)}</div>`;
-    rows += `<div class="info-row"><span>Altitude</span><span>${p.altDeg.toFixed(1)}°</span></div>`;
-    rows += `<div class="info-row"><span>Azimuth</span><span>${azDir}</span></div>`;
+
+    if (_view === 'sky') {
+      const azDir = p.azDeg < -0.05 ? `${Math.abs(p.azDeg).toFixed(1)}° E`
+                  : p.azDeg >  0.05 ? `${p.azDeg.toFixed(1)}° W`
+                  : 'S';
+      rows += `<div class="info-row"><span>Altitude</span><span>${p.altDeg.toFixed(1)}°</span></div>`;
+      rows += `<div class="info-row"><span>Azimuth</span><span>${azDir}</span></div>`;
+    } else {
+      const eotSign = p.eot >= 0 ? '+' : '';
+      rows += `<div class="info-row"><span>Eq. of Time</span><span>${eotSign}${p.eot.toFixed(1)} min</span></div>`;
+      rows += `<div class="info-row"><span>Declination</span><span>${p.declDeg.toFixed(2)}°</span></div>`;
+    }
     rows += `<hr class="info-sep">`;
 
     if (isPolarDay) {
@@ -1029,6 +1144,26 @@ _slider.addEventListener('input', () => {
 render();
 setupInteraction();
 setupLocationControls();
+
+// ── View toggle ───────────────────────────────────────────────────────────────
+document.getElementById('btnSky').addEventListener('click', () => {
+  if (_view === 'sky') return;
+  _view = 'sky';
+  document.getElementById('btnSky').classList.add('active');
+  document.getElementById('btnEot').classList.remove('active');
+  _pinned = false; _pinnedDoy = null;
+  document.getElementById('info').style.display = 'none';
+  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+});
+document.getElementById('btnEot').addEventListener('click', () => {
+  if (_view === 'eot') return;
+  _view = 'eot';
+  document.getElementById('btnEot').classList.add('active');
+  document.getElementById('btnSky').classList.remove('active');
+  _pinned = false; _pinnedDoy = null;
+  document.getElementById('info').style.display = 'none';
+  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+});
 </script>
 </body>
 </html>

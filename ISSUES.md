@@ -22,7 +22,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 4 | Time-of-day slider | ✅ Done | 1 |
 | 5 | Location: bundled cities + manual lat/long | ✅ Done | 1 |
 | 6 | Location: live geocoding search | ✅ Done | 5 |
-| 7 | EoT × Declination projection toggle | 📋 Todo | 1 |
+| 7 | EoT × Declination projection toggle | ✅ Done | 1 |
 | 8 | Markers + "today" | 📋 Todo | 1 |
 | 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
 | 10 | Theme toggle (dark default) | 📋 Todo | 1 |
@@ -154,11 +154,21 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 
 ## Issue 7 — EoT × Declination projection toggle
 
-**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑2, §5
+**Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑2, §5
 
 - Add the **NOAA helper** (equation of time + declination); add a **view toggle** that re-projects the same per-day data to EoT (x) × Declination (y) with its own axes.
 
 **Done when:** toggling switches projection cleanly; the EoT shape is the expected location-independent figure‑8.
+
+### Delivered
+
+- **NOAA EoT + Declination helper** (`solarEoTDecl`): hand-written using NOAA's Julian-century formulas for geometric mean longitude/anomaly, eccentricity, obliquity, equation of center, and the y-formula for equation of time; stamped onto every point in `buildPoints`
+- **Sky | EoT toggle** in the controls bar — two segmented buttons, Sky active by default
+- **EoT × Declination view**: x-axis = equation of time (minutes, gridded every 4 min, labelled `← fast … slow →`), y-axis = declination (degrees, gridded every 5°, equator labelled); no sky gradient or horizon in this view
+- **Location-independence verified**: the EoT × Decl figure-8 shape does not change when switching cities (correct — it depends only on date)
+- **Subtitle** updates to `… · EoT × Decl` when toggled
+- **Info panel** shows Eq. of Time + Declination instead of Altitude + Azimuth in EoT view; polar-day/night messaging is suppressed (irrelevant in EoT view)
+- **State preserved across toggles**: pinned tooltip cleared on switch; time slider and location carry over
 
 ## Issue 8 — Markers + "today"
 

@@ -10,10 +10,12 @@
 
 ``` implement Issue N ```
 ``` mark Issue N as Done, also add what was delivered and what to verify (text above) to the issue description in ISSUES.md file ```
+``` write down playwright tests for issue 7 to a separate file in test folder so it coule be run later to detect regressions ```
+- commit after each issue is implemeted (makes easy to navigate between implemenation phases or to discard incorrect implementation)
 
 * Restart Claude session to refresh context (when tokens > 40% ?)
 With full context (52%) I was asked to verify new functionality (on web page) manually. With fresh context testing was done automatically with chromium/playwright and a display issue was found/fixed.
-
+Of course we can ask explicitely to test with chromium/playwright.
 
 * Install chromium and playwright so they could be used between sessions
 ``` Two commands are all you need:
@@ -26,3 +28,7 @@ With full context (52%) I was asked to verify new functionality (on web page) ma
   commands under it. To avoid surprises, make sure your default is pinned:
 
   nvm alias default 22 ```
+
+
+  * Caevats of the method:
+  - no tracking of regressions ... maybe tests should be gathered somehow?
