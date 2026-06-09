@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  },
+  "scripts": {
+    "test": "node test/issue7-eot-toggle.mjs"
+  }
+}

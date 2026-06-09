@@ -13,14 +13,9 @@
  * Run:  node test/issue7-eot-toggle.mjs
  */
 
-import { createRequire } from 'module';
+import { chromium }      from 'playwright';
 import { fileURLToPath }  from 'url';
 import path               from 'path';
-
-// Resolve playwright from the active Node's global modules (nvm-safe)
-const require    = createRequire(import.meta.url);
-const nodeDir    = path.dirname(process.execPath);
-const { chromium } = require(path.resolve(nodeDir, '../lib/node_modules/playwright/index.js'));
 
 const FILE = 'file://' + path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../index.html');
 
