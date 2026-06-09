@@ -60,8 +60,8 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 
 ### 4.4 Markers & layers
 
-- **FR‑11 (Date markers):** Draw and label **solstices, equinoxes, and 1st‑of‑month ticks** on the curve.
-- **FR‑12 ("Today"):** Highlight the current date's position with a distinct marker.
+- **FR‑11 (Date markers):** Draw and label **solstices, equinoxes, and 1st‑of‑month ticks** on the curve; togglable via a **Markers** button (**off by default**). Works in both Sky and EoT × Declination projections.
+- **FR‑12 ("Today"):** Highlight the current date's position with a distinct marker. **Always visible**, independent of the Markers toggle.
 - **FR‑13 (Golden‑hour/twilight bands):** Selectable shaded **altitude bands** (golden hour 0°–6°; civil/nautical/astronomical twilight below horizon) in the sky view, **off by default**.
 
 ### 4.5 Cross‑cutting
@@ -85,7 +85,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 ## 6. UI / UX
 
 - **Header:** title; language toggle; theme toggle.
-- **Controls:** location (city autocomplete + live search + manual lat/long + optional geolocation); year selector; time‑of‑day slider with readout; view toggle (Sky ↔ EoT); layer toggles (markers, golden‑hour/twilight bands, today).
+- **Controls:** location (city autocomplete + live search + manual lat/long + optional geolocation); year selector; time‑of‑day slider with readout; view toggle (Sky ↔ EoT); **Markers toggle** (month ticks + solstice/equinox markers, off by default); layer toggles (golden‑hour/twilight bands). The "today" marker is always visible and has no toggle.
 - **Main canvas:** responsive inline **SVG** with the analemma, horizon line, axes/labels, markers, and the highlighted point.
 - **Info panel:** per‑date details (see FR‑5); pinned on tap.
 - **Footer:** attribution (SunCalc, Open‑Meteo) and accuracy caveat.

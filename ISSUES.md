@@ -175,17 +175,19 @@ The tracer bullet: a single self-contained `index.html` that opens via `file://`
 **Status:** ✅ Done · **Depends on:** 1 · **PRD:** FR‑11, FR‑12
 
 - Draw and label **solstices, equinoxes, and 1st-of-month ticks**; highlight the **current date** with a distinct marker. Works in both projections.
+- Solstice/equinox + month ticks are **togglable** via a **Markers** button (off by default); the **"today" marker is always visible** regardless of the toggle.
 
-**Done when:** markers appear at the correct dates/positions in both views; "today" is visible.
+**Done when:** markers appear at the correct dates/positions in both views; "today" is visible; toggling Markers hides month/solstice markers but not today.
 
 ### Delivered
 
 - **Month start ticks**: all 12 months get a small outlined circle + 3-letter label (`Jan`–`Dec`), positioned radially outward from the curve center so labels don't overlap the path
 - **Solstice markers**: June solstice in amber (`#f5a623`), December solstice in light blue (`#93c5fd`); each labeled with the exact computed date (e.g. `Jun 21`)
 - **Equinox markers**: March and September equinoxes in teal (`#5eead4`), labeled with the date; correctly placed near the equator line in EoT × Decl view
-- **Today marker**: amber glow ring + filled dot + `Today` label; replaces the old ad-hoc dot from Issue 1; draws on top of any month/solstice marker that falls on the same day
+- **Markers toggle**: a **Markers** button in the controls bar (off by default) shows/hides month ticks and solstice/equinox markers; re-renders without those layers when off
+- **Today marker**: amber glow ring + filled dot + `Today` label; **always visible**, independent of the Markers toggle; replaces the old ad-hoc dot from Issue 1
 - **Both views**: `drawMarkers()` is called after every re-render so markers appear correctly in both Sky and EoT × Declination projections
-- **`test/issue8-markers.mjs`**: 20 Playwright tests covering all marker types, label presence, solstice vertical ordering, equinox proximity to the equator line, and view-toggle persistence
+- **`test/issue8-markers.mjs`**: 24 Playwright tests covering all marker types, label presence, solstice vertical ordering, equinox proximity to the equator line, Markers toggle (hides month/solstice but keeps today), and view-toggle persistence
 
 ## Issue 9 — Golden-hour / twilight bands layer
 

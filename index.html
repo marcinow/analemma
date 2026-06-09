@@ -246,6 +246,8 @@
   <span class="view-btns">
     <button id="btnSky" class="view-btn active">Sky</button><button id="btnEot" class="view-btn">EoT</button>
   </span>
+  <span class="ctrl-sep">|</span>
+  <button id="btnMarkers" class="view-btn" title="Toggle month &amp; solstice markers">Markers</button>
 </div>
 
 <main>
@@ -560,11 +562,12 @@ const el = (tag, attrs = {}, text) => {
 };
 
 // ── Module-level interaction state ────────────────────────────────────────────
-let _pts       = [];
-let _loc       = { ...DEFAULT };
-let _pinned    = false;
-let _pinnedDoy = null;
-let _view      = 'sky';  // 'sky' | 'eot'
+let _pts        = [];
+let _loc        = { ...DEFAULT };
+let _pinned     = false;
+let _pinnedDoy  = null;
+let _view       = 'sky';  // 'sky' | 'eot'
+let _markersOn  = false;
 
 // ── Astronomy helpers ─────────────────────────────────────────────────────────
 function moonPhaseInfo(phase) {
@@ -599,7 +602,7 @@ function toSolarTimeStr(date, lon) {
 }
 
 // ── Markers layer: month ticks, solstices/equinoxes, today ───────────────────
-function drawMarkers(svg, pts, M, pw, ph, year) {
+function drawMarkers(svg, pts, M, pw, ph, year, showMarkers = true) {
   const now      = new Date();
   const todayDoy = year === now.getFullYear()
     ? Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
@@ -629,47 +632,49 @@ function drawMarkers(svg, pts, M, pw, ph, year) {
   const circG = el('g', { 'clip-path': 'url(#pc)', 'pointer-events': 'none' });
   const lblG  = el('g', { 'pointer-events': 'none' });
 
-  // Month start ticks
-  for (const p of pts) {
-    if (p.date.getUTCDate() !== 1) continue;
-    if (specialSet.has(p.doy)) continue;
-    const m = p.date.getUTCMonth();
-    circG.appendChild(el('circle', {
-      cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
-      r: 3, fill: 'var(--surface)', stroke: 'var(--muted)', 'stroke-width': 1.2
-    }));
-    const dx = p.sx - cx, dy = p.sy - cy;
-    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-    const ox = (dx / dist) * 14, oy = (dy / dist) * 14;
-    const anchor = ox > 2 ? 'start' : ox < -2 ? 'end' : 'middle';
-    lblG.appendChild(el('text', {
-      x: (p.sx + ox).toFixed(1), y: (p.sy + oy + 3).toFixed(1),
-      'text-anchor': anchor,
-      fill: 'var(--muted)', 'font-size': '8px', 'font-family': 'inherit'
-    }, MONTH[m]));
-  }
+  if (showMarkers) {
+    // Month start ticks
+    for (const p of pts) {
+      if (p.date.getUTCDate() !== 1) continue;
+      if (specialSet.has(p.doy)) continue;
+      const m = p.date.getUTCMonth();
+      circG.appendChild(el('circle', {
+        cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
+        r: 3, fill: 'var(--surface)', stroke: 'var(--muted)', 'stroke-width': 1.2
+      }));
+      const dx = p.sx - cx, dy = p.sy - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const ox = (dx / dist) * 14, oy = (dy / dist) * 14;
+      const anchor = ox > 2 ? 'start' : ox < -2 ? 'end' : 'middle';
+      lblG.appendChild(el('text', {
+        x: (p.sx + ox).toFixed(1), y: (p.sy + oy + 3).toFixed(1),
+        'text-anchor': anchor,
+        fill: 'var(--muted)', 'font-size': '8px', 'font-family': 'inherit'
+      }, MONTH[m]));
+    }
 
-  // Solstice & equinox markers
-  const events = [
-    { idx: summerIdx, color: '#f5a623' },
-    { idx: winterIdx, color: '#93c5fd' },
-    { idx: springIdx, color: '#5eead4' },
-    { idx: autumnIdx, color: '#5eead4' },
-  ].filter(ev => ev.idx >= 0 && ev.idx < pts.length);
+    // Solstice & equinox markers
+    const events = [
+      { idx: summerIdx, color: '#f5a623' },
+      { idx: winterIdx, color: '#93c5fd' },
+      { idx: springIdx, color: '#5eead4' },
+      { idx: autumnIdx, color: '#5eead4' },
+    ].filter(ev => ev.idx >= 0 && ev.idx < pts.length);
 
-  for (const ev of events) {
-    const p = pts[ev.idx];
-    circG.appendChild(el('circle', {
-      cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
-      r: 5, fill: ev.color, opacity: .9
-    }));
-    const dateStr = p.date.toLocaleString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-    const lblY = p.sy > cy ? p.sy + 14 : p.sy - 8;
-    lblG.appendChild(el('text', {
-      x: p.sx.toFixed(1), y: lblY.toFixed(1),
-      'text-anchor': 'middle',
-      fill: ev.color, 'font-size': '9px', 'font-family': 'inherit', 'font-weight': '600'
-    }, dateStr));
+    for (const ev of events) {
+      const p = pts[ev.idx];
+      circG.appendChild(el('circle', {
+        cx: p.sx.toFixed(2), cy: p.sy.toFixed(2),
+        r: 5, fill: ev.color, opacity: .9
+      }));
+      const dateStr = p.date.toLocaleString('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      const lblY = p.sy > cy ? p.sy + 14 : p.sy - 8;
+      lblG.appendChild(el('text', {
+        x: p.sx.toFixed(1), y: lblY.toFixed(1),
+        'text-anchor': 'middle',
+        fill: ev.color, 'font-size': '9px', 'font-family': 'inherit', 'font-weight': '600'
+      }, dateStr));
+    }
   }
 
   // Today marker
@@ -854,7 +859,7 @@ function render({ lat, lon, name } = DEFAULT, lmstHour = 12, year = YEAR) {
   svg.appendChild(dotsG);
 
   // ── Markers: month starts, solstices, equinoxes, today
-  drawMarkers(svg, pts, M, pw, ph, year);
+  drawMarkers(svg, pts, M, pw, ph, year, _markersOn);
 
   // ── Highlight ring
   svg.appendChild(el('circle', {
@@ -1243,6 +1248,11 @@ document.getElementById('btnEot').addEventListener('click', () => {
   document.getElementById('btnSky').classList.remove('active');
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
+  render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
+});
+document.getElementById('btnMarkers').addEventListener('click', () => {
+  _markersOn = !_markersOn;
+  document.getElementById('btnMarkers').classList.toggle('active', _markersOn);
   render(_loc, parseInt(_slider.value, 10) / 60, YEAR);
 });
 </script>

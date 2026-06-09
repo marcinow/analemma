@@ -25,10 +25,9 @@ page.on('pageerror', e => errors.push(e.message));
 await page.goto(fileUrl);
 await page.waitForTimeout(300);
 
-// ── [1] Today marker ──────────────────────────────────────────────────────────
-console.log('\n[1] Today marker (Sky view)');
+// ── [1] Today marker visible by default (markers off) ────────────────────────
+console.log('\n[1] Today marker visible by default (markers off)');
 {
-  // There should be two concentric amber circles (glow + dot) for today
   const amberCircles = await page.$$eval('#chart circle[fill="var(--accent)"]', els => els.length);
   ok('Today has amber circle(s)', amberCircles >= 1);
 
@@ -36,53 +35,63 @@ console.log('\n[1] Today marker (Sky view)');
     [...svg.querySelectorAll('text')].some(t => t.textContent.trim() === 'Today')
   );
   ok('"Today" label present', todayLabel);
+
+  // Markers are off by default — no month ticks or solstice markers
+  const monthCircles = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[stroke="var(--muted)"]')].filter(c => c.getAttribute('r') === '3').length
+  );
+  ok('Month ticks hidden by default', monthCircles === 0);
+
+  const orangeCircles = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[fill="#f5a623"]')].length
+  );
+  ok('Solstice markers hidden by default', orangeCircles === 0);
+
+  const btnInactive = await page.$eval('#btnMarkers', b => !b.classList.contains('active'));
+  ok('Markers button inactive by default', btnInactive);
 }
 
-// ── [2] Month ticks ───────────────────────────────────────────────────────────
-console.log('\n[2] Month start ticks (Sky view)');
+// ── [2] Enable markers → month ticks appear ───────────────────────────────────
+console.log('\n[2] Month start ticks (markers on)');
 {
+  await page.click('#btnMarkers');
+  await page.waitForTimeout(200);
+
   const monthAbbrs = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const labels = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('text')].map(t => t.textContent.trim())
   );
   const found = monthAbbrs.filter(m => labels.includes(m));
-  // At least 10 month labels (some may overlap with solstice/equinox and be skipped)
   ok(`Month labels present (${found.length}/12)`, found.length >= 10);
 
-  // Month tick circles: stroke=var(--muted), r=3
   const monthCircles = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('circle[stroke="var(--muted)"]')].filter(c => c.getAttribute('r') === '3').length
   );
   ok(`Month tick circles present (${monthCircles})`, monthCircles >= 8);
 }
 
-// ── [3] Solstice markers ─────────────────────────────────────────────────────
-console.log('\n[3] Solstice markers (Sky view)');
+// ── [3] Solstice markers ──────────────────────────────────────────────────────
+console.log('\n[3] Solstice markers (markers on)');
 {
-  // Orange circles for summer solstice
   const orangeCircles = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('circle[fill="#f5a623"]')].length
   );
   ok('Summer solstice marker (orange) present', orangeCircles >= 1);
 
-  // Blue circles for winter solstice
   const blueCircles = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('circle[fill="#93c5fd"]')].length
   );
   ok('Winter solstice marker (blue) present', blueCircles >= 1);
 
-  // Solstice labels — should contain a month+day for June and December
   const labels = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('text')].map(t => t.textContent.trim())
   );
-  const hasJune = labels.some(l => l.startsWith('Jun'));
-  const hasDec  = labels.some(l => l.startsWith('Dec'));
-  ok('June solstice date label present', hasJune);
-  ok('December solstice date label present', hasDec);
+  ok('June solstice date label present',    labels.some(l => l.startsWith('Jun')));
+  ok('December solstice date label present', labels.some(l => l.startsWith('Dec')));
 }
 
 // ── [4] Equinox markers ───────────────────────────────────────────────────────
-console.log('\n[4] Equinox markers (Sky view)');
+console.log('\n[4] Equinox markers (markers on)');
 {
   const tealCircles = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('circle[fill="#5eead4"]')].length
@@ -92,16 +101,13 @@ console.log('\n[4] Equinox markers (Sky view)');
   const labels = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('text')].map(t => t.textContent.trim())
   );
-  const hasMar = labels.some(l => l.startsWith('Mar'));
-  const hasSep = labels.some(l => l.startsWith('Sep'));
-  ok('March equinox label present', hasMar);
-  ok('September equinox label present', hasSep);
+  ok('March equinox label present',     labels.some(l => l.startsWith('Mar')));
+  ok('September equinox label present', labels.some(l => l.startsWith('Sep')));
 }
 
 // ── [5] Solstice positions plausibility ───────────────────────────────────────
 console.log('\n[5] Solstice position plausibility');
 {
-  // Summer solstice should be near the top of the plot (small cy), winter near bottom (large cy)
   const positions = await page.$eval('#chart', svg => {
     const orange = [...svg.querySelectorAll('circle[fill="#f5a623"]')].map(c => +c.getAttribute('cy'));
     const blue   = [...svg.querySelectorAll('circle[fill="#93c5fd"]')].map(c => +c.getAttribute('cy'));
@@ -138,15 +144,13 @@ console.log('\n[6] Markers in EoT × Declination view');
   );
   ok('"Today" label present in EoT view', todayLabel);
 
-  // In EoT view, equinoxes should be near y=0 declination line
-  // Teal circles should be near the equator (middle of the chart, ph/2 from top)
   const tealCys = await page.$eval('#chart', svg =>
     [...svg.querySelectorAll('circle[fill="#5eead4"]')].map(c => +c.getAttribute('cy'))
   );
-  const viewH = 540, marginTop = 32, ph = 540 - 32 - 58;
-  const equatorY = marginTop + ph / 2; // ~239
-  const closeToEquator = tealCys.some(cy => Math.abs(cy - equatorY) < 40);
-  ok('Equinox markers near equator line in EoT view', closeToEquator);
+  const marginTop = 32, ph = 540 - 32 - 58;
+  const equatorY = marginTop + ph / 2;
+  ok('Equinox markers near equator line in EoT view',
+     tealCys.some(cy => Math.abs(cy - equatorY) < 40));
 }
 
 // ── [7] Switch back to Sky — markers still present ───────────────────────────
@@ -166,8 +170,45 @@ console.log('\n[7] Markers persist after toggling back to Sky view');
   ok('"Today" label present after Sky toggle', todayLabel);
 }
 
-// ── [8] No JS errors ─────────────────────────────────────────────────────────
-console.log('\n[8] No JS errors');
+// ── [8] Markers toggle — hides month/solstice but keeps today ─────────────────
+console.log('\n[8] Markers toggle');
+{
+  // Turn markers off
+  await page.click('#btnMarkers');
+  await page.waitForTimeout(200);
+
+  const monthCirclesOff = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[stroke="var(--muted)"]')].filter(c => c.getAttribute('r') === '3').length
+  );
+  ok('Month ticks hidden when markers off', monthCirclesOff === 0);
+
+  const orangeOff = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[fill="#f5a623"]')].length
+  );
+  ok('Solstice markers hidden when markers off', orangeOff === 0);
+
+  const todayOff = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('text')].some(t => t.textContent.trim() === 'Today')
+  );
+  ok('"Today" label still visible when markers off', todayOff);
+
+  const amberOff = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[fill="var(--accent)"]')].length
+  );
+  ok('Today amber dot still visible when markers off', amberOff >= 1);
+
+  // Turn markers back on
+  await page.click('#btnMarkers');
+  await page.waitForTimeout(200);
+
+  const monthCirclesOn = await page.$eval('#chart', svg =>
+    [...svg.querySelectorAll('circle[stroke="var(--muted)"]')].filter(c => c.getAttribute('r') === '3').length
+  );
+  ok('Month ticks restored when markers toggled back on', monthCirclesOn >= 8);
+}
+
+// ── [9] No JS errors ─────────────────────────────────────────────────────────
+console.log('\n[9] No JS errors');
 ok('Zero console errors', errors.length === 0);
 
 await browser.close();
