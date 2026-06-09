@@ -13,3 +13,16 @@
 
 * Restart Claude session to refresh context (when tokens > 40% ?)
 With full context (52%) I was asked to verify new functionality (on web page) manually. With fresh context testing was done automatically with chromium/playwright and a display issue was found/fixed.
+
+
+* Install chromium and playwright so they could be used between sessions
+``` Two commands are all you need:
+
+  npm install -g playwright && playwright install chromium
+
+  After that, import {chromium} from 'playwright' works in any Node script without a local install.
+
+  One nvm caveat: the global install is tied to whichever Node version is active. If you nvm use a different version later, re-run both
+  commands under it. To avoid surprises, make sure your default is pinned:
+
+  nvm alias default 22 ```
