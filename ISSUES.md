@@ -1,0 +1,144 @@
+# Issues — Interactive Analemma
+
+Work is sliced as **tracer bullets**: each issue is an independently-grabbable **vertical slice** that keeps `index.html` openable and working end-to-end after it lands. Earlier slices build the skeleton; later slices thicken it. Pick any issue whose dependencies are `Done`.
+
+## Status legend
+
+| Status | Meaning |
+|--------|---------|
+| 📋 Todo | Not started |
+| 🚧 In Progress | Being worked on |
+| 🔍 Review | Implemented, awaiting verification |
+| ✅ Done | Verified against acceptance criteria |
+| ⛔ Blocked | Waiting on a dependency or decision |
+
+## Progress
+
+| # | Issue | Status | Depends on |
+|---|-------|--------|------------|
+| 1 | Walking skeleton: static analemma | 📋 Todo | — |
+| 2 | Hover/tap a point → date | 📋 Todo | 1 |
+| 3 | Rich per-day info panel | 📋 Todo | 2 |
+| 4 | Time-of-day slider | 📋 Todo | 1 |
+| 5 | Location: bundled cities + manual lat/long | 📋 Todo | 1 |
+| 6 | Location: live geocoding search | 📋 Todo | 5 |
+| 7 | EoT × Declination projection toggle | 📋 Todo | 1 |
+| 8 | Markers + "today" | 📋 Todo | 1 |
+| 9 | Golden-hour / twilight bands layer | 📋 Todo | 1 |
+| 10 | Theme toggle (dark default) | 📋 Todo | 1 |
+| 11 | Language toggle (EN/PL) | 📋 Todo | 3 |
+| 12 | Shareable URL state | 📋 Todo | 4, 5, 7, 10 |
+| 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
+
+---
+
+## Issue 1 — Walking skeleton: static analemma
+
+**Status:** 📋 Todo · **Depends on:** — · **PRD:** FR‑1, FR‑3 (noon only), §5, §7
+
+The tracer bullet: a single self-contained `index.html` that opens via `file://` and draws a correct figure‑8.
+
+- Vendor **SunCalc** inline; add the tiny page scaffold (header, SVG canvas, footer).
+- Compute one Sun position per day for a **hardcoded location** (e.g. Warsaw) at **local mean solar noon** using the `UTC_hours = h − lon/15` time model.
+- Render the points as an SVG path in the **sky view** (azimuth × altitude) with horizon line and labeled axes, in a responsive `viewBox`.
+
+**Done when:** opening the file in a browser (no server, offline) shows a recognizable analemma; solstice points sit at the declination extremes and the curve is near-symmetric at noon.
+
+## Issue 2 — Hover/tap a point → date
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑5 (date only), FR‑17
+
+- On `pointermove`/`pointerdown`, find the nearest daily sample within a pixel threshold; highlight it.
+- Show a minimal info panel with the **localized date**; tap pins it on touch.
+
+**Done when:** moving along the curve updates the highlighted point and shows the correct date; tap works on touch.
+
+## Issue 3 — Rich per-day info panel
+
+**Status:** 📋 Todo · **Depends on:** 2 · **PRD:** FR‑5, FR‑6
+
+- Extend the panel with **sun altitude/azimuth, day length, night length, sunrise, sunset** (`SunCalc.getTimes`) and **Moon phase** name + icon + illumination % (`getMoonIllumination`).
+- Handle **polar day/night** messaging instead of NaN.
+
+**Done when:** every field populates for a hovered date and a spot-checked sunrise/sunset matches a known reference; polar latitudes show friendly messages.
+
+## Issue 4 — Time-of-day slider
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑3
+
+- Add a **00:00–24:00 slider** (default 12:00) with a live readout that re-samples the curve at the chosen local mean solar time.
+
+**Done when:** dragging the slider visibly reshapes/tilts the figure‑8 in real time.
+
+## Issue 5 — Location: bundled cities + manual lat/long
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑7, FR‑9, FR‑10
+
+- Inline a **~150-city list**; add an autocomplete selector and **manual lat/long inputs** that re-render the curve.
+- Optional **"use my location"** via the Geolocation API.
+
+**Done when:** picking a city or entering coordinates updates the analemma; works fully offline.
+
+## Issue 6 — Location: live geocoding search
+
+**Status:** 📋 Todo · **Depends on:** 5 · **PRD:** FR‑8
+
+- When a search isn't in the bundled list, query the **Open‑Meteo Geocoding API** (no key) and resolve coordinates; **degrade gracefully offline** with a notice.
+
+**Done when:** an arbitrary city resolves when online; offline falls back to bundled list + manual entry without errors.
+
+## Issue 7 — EoT × Declination projection toggle
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑2, §5
+
+- Add the **NOAA helper** (equation of time + declination); add a **view toggle** that re-projects the same per-day data to EoT (x) × Declination (y) with its own axes.
+
+**Done when:** toggling switches projection cleanly; the EoT shape is the expected location-independent figure‑8.
+
+## Issue 8 — Markers + "today"
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑11, FR‑12
+
+- Draw and label **solstices, equinoxes, and 1st-of-month ticks**; highlight the **current date** with a distinct marker. Works in both projections.
+
+**Done when:** markers appear at the correct dates/positions in both views; "today" is visible.
+
+## Issue 9 — Golden-hour / twilight bands layer
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑13
+
+- Add a **selectable, off-by-default** layer of shaded altitude bands (golden hour 0°–6°; civil/nautical/astronomical twilight) in the sky view.
+
+**Done when:** the toggle shows/hides correctly positioned bands; off by default.
+
+## Issue 10 — Theme toggle (dark default)
+
+**Status:** 📋 Todo · **Depends on:** 1 · **PRD:** FR‑15, §7
+
+- Theme via **CSS custom properties**; **dark/light toggle, dark default**, persisted in `localStorage`.
+
+**Done when:** toggling restyles the whole page with good contrast in both themes and persists across reloads.
+
+## Issue 11 — Language toggle (EN/PL)
+
+**Status:** 📋 Todo · **Depends on:** 3 · **PRD:** FR‑14
+
+- Add an **EN/PL string dictionary** and toggle; localize UI labels, month names, Moon-phase names, and date/number formatting via `Intl`.
+
+**Done when:** switching language updates all visible text and formats; no untranslated strings.
+
+## Issue 12 — Shareable URL state
+
+**Status:** 📋 Todo · **Depends on:** 4, 5, 7, 10 · **PRD:** FR‑16
+
+- Serialize `{lat, lon, cityName, year, time, view, lang, theme, layers}` into the **URL hash**; parse and restore on load.
+
+**Done when:** the URL round-trips — opening a copied link in a fresh tab restores the exact view.
+
+## Issue 13 — Polish: touch, a11y, polar, attribution
+
+**Status:** 📋 Todo · **Depends on:** 3 · **PRD:** FR‑6, §7 (a11y), §6 (footer)
+
+- Refine **touch** ergonomics and responsive layout (≥320 px); ensure **keyboard-operable** controls and screen-reader-readable info panel; finalize **footer attribution** (SunCalc, Open‑Meteo) + accuracy caveat.
+
+**Done when:** the page is comfortable on mobile, keyboard-navigable, and shows correct attributions/caveats.
