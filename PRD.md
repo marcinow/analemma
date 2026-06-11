@@ -71,6 +71,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 - **FR‑16 (Shareable URL):** Encode `{lat, lon, cityName, year, time, view, lang, theme, layers}` in the URL hash; parse and restore on load so a link reopens the exact view.
 - **FR‑17 (Touch support):** Full pointer/touch support; responsive SVG that scales to the viewport.
 - **FR‑18 (Collapsible controls):** The **Location** and **Time** control lines are each individually **collapsible** behind a labeled disclosure header, **folded by default**, so the page opens compact. A folded header reflects its current value (city name / LMST) for orientation; toggles are keyboard‑operable (`aria-expanded`).
+- **FR‑19 (Info button & audio narration):** A small **ℹ button** in the header opens a dropdown panel with a short bilingual explanation of what an analemma is. Opening the panel simultaneously plays a **language‑matched voice recording** (`analemma-en.mp3` / `analemma-pl.mp3`) from the start, without looping. Closing the panel (second click, outside click, or Esc) pauses and resets playback so reopening replays from the beginning. The panel is not part of the shareable URL.
 
 ## 5. Astronomy & computation
 
@@ -85,7 +86,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 
 ## 6. UI / UX
 
-- **Header:** title; language toggle; theme toggle.
+- **Header:** title; language toggle; theme toggle; **info (ℹ) button** (FR‑19).
 - **Controls:** location (city autocomplete + live search + manual lat/long + optional geolocation); year selector; time‑of‑day slider with readout; view toggle (Sky ↔ EoT); **Markers toggle** (month ticks + solstice/equinox markers, off by default); layer toggles (golden‑hour/twilight bands). The **Location** and **Time** lines are individually **collapsible**, folded by default (FR‑18). The "today" marker is always visible and has no toggle.
 - **Main canvas:** responsive inline **SVG** with the analemma, horizon line, axes/labels, markers, and the highlighted point.
 - **Info panel:** per‑date details (see FR‑5); pinned on tap.
@@ -93,7 +94,7 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 
 ## 7. Non‑functional requirements
 
-- **Self‑contained:** one `index.html`; opens via `file://`; offline‑capable (network only for optional live geocoding).
+- **Self‑contained:** one `index.html` plus two audio files (`analemma-en.mp3`, `analemma-pl.mp3`) shipped alongside it; opens via `file://`; offline‑capable (network only for optional live geocoding). The audio files are the only intentional deviation from the single-file ideal — they are too large to inline as base64 without a significant page‑weight penalty.
 - **Performance:** initial render and slider/toggle updates feel instant (≤ ~16 ms per frame target for redraws of ~365 points).
 - **Responsive:** usable from ~320 px wide up to desktop.
 - **Accessibility:** keyboard‑operable controls; sufficient contrast in both themes; the info panel readable by screen readers.
@@ -110,6 +111,8 @@ The entire app ships as a **single self‑contained `index.html`** file that wor
 
 - `PRD.md` (this document).
 - `index.html` — the complete standalone application.
+- `analemma-en.mp3` — English voice narration for the info panel (FR‑19).
+- `analemma-pl.mp3` — Polish voice narration for the info panel (FR‑19).
 
 ## 10. Out of scope / future
 

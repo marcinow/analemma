@@ -180,7 +180,7 @@
       font-size: .68rem;
       color: var(--muted);
     }
-    #btnTheme, #btnLang {
+    #btnTheme, #btnLang, #btnInfo {
       background: none;
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -192,7 +192,20 @@
       letter-spacing: .05em;
     }
     #btnTheme { margin-left: auto; font-size: .85rem; letter-spacing: 0; }
-    #btnTheme:hover, #btnLang:hover { border-color: var(--accent); color: var(--text); }
+    #btnTheme:hover, #btnLang:hover, #btnInfo:hover { border-color: var(--accent); color: var(--text); }
+
+    #about-panel {
+      display: none;
+      position: fixed; top: 2.7rem; right: 1rem; z-index: 30;
+      width: min(320px, calc(100vw - 2rem));
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: .75rem .9rem;
+      color: var(--text); box-shadow: 0 4px 20px var(--shadow);
+    }
+    #about-panel.open { display: block; }
+    #about-panel h2 { font-size: .85rem; color: var(--accent); margin-bottom: .4rem; }
+    #about-panel p  { font-size: .8rem; line-height: 1.5; color: var(--text); margin-bottom: .6rem; }
+    #about-panel audio { width: 100%; }
 
     .city-wrap { position: relative; }
     #cityInput {
@@ -274,7 +287,14 @@
   <span id="subtitle"></span>
   <button id="btnTheme" title="Toggle theme">☀</button>
   <button id="btnLang" title="Language / Język">PL</button>
+  <button id="btnInfo" title="About the analemma / O analemmie" aria-expanded="false">ℹ</button>
 </header>
+
+<div id="about-panel">
+  <h2 data-i18n="about.title">What is an analemma?</h2>
+  <p data-i18n="about.body">An analemma is the figure-8 the Sun traces across the sky when its position is recorded at the same time of day for a whole year. It comes from two effects: the tilt of Earth's axis (23.4°), which lifts the Sun higher in summer and lower in winter, and Earth's elliptical orbit, which makes the Sun run a little ahead of or behind clock time through the seasons (the equation of time). Together they trace the lopsided 8 you see here.</p>
+  <audio id="aboutAudio" src="analemma-en.mp3" controls preload="none"></audio>
+</div>
 
 <div id="ctrl-bar">
   <button id="locToggle" class="ctrl-toggle" aria-expanded="false" aria-controls="loc-panel">
@@ -663,6 +683,8 @@ const STRINGS = {
     'drop.offline': '⚠ offline — bundled cities only',
     'subtitle.sky': 'Sky',          'subtitle.eot': 'EoT × Decl',
     'lang.toggle': 'PL',
+    'about.title': 'What is an analemma?',
+    'about.body': 'An analemma is the figure-8 the Sun traces across the sky when its position is recorded at the same time of day for a whole year. It comes from two effects: the tilt of Earth\'s axis (23.4°), which lifts the Sun higher in summer and lower in winter, and Earth\'s elliptical orbit, which makes the Sun run a little ahead of or behind clock time through the seasons (the equation of time). Together they trace the lopsided 8 you see here.',
   },
   pl: {
     'ctrl.location': 'Lokalizacja', 'ctrl.time': 'Czas',
@@ -694,6 +716,8 @@ const STRINGS = {
     'drop.offline': '⚠ tryb offline — tylko wbudowane miasta',
     'subtitle.sky': 'Niebo',        'subtitle.eot': 'RCz × Dekl',
     'lang.toggle': 'EN',
+    'about.title': 'Czym jest analemma?',
+    'about.body': 'Analemma to ósemka, którą Słońce zakreśla na niebie, gdy jego położenie zapisujemy każdego dnia o tej samej porze przez cały rok. Powstaje z dwóch przyczyn: nachylenia osi Ziemi (23,4°), przez które Słońce jest latem wyżej, a zimą niżej, oraz eliptycznej orbity Ziemi, przez którą Słońce wyprzedza czas zegarowy lub się względem niego spóźnia (równanie czasu). Razem tworzą tę asymetryczną ósemkę, którą tu widzisz.',
   }
 };
 let _lang = 'en';
@@ -1472,6 +1496,8 @@ function setupFolds() {
 }
 
 // ── Language toggle ───────────────────────────────────────────────────────────
+function audioSrcForLang() { return _lang === 'pl' ? 'analemma-pl.mp3' : 'analemma-en.mp3'; }
+
 function applyLang() {
   document.documentElement.lang = _lang;
   document.querySelectorAll('[data-i18n]').forEach(node => {
@@ -1481,6 +1507,10 @@ function applyLang() {
   document.getElementById('btnLang').textContent    = t('lang.toggle');
   _pinned = false; _pinnedDoy = null;
   document.getElementById('info').style.display = 'none';
+  const audio = document.getElementById('aboutAudio');
+  audio.pause(); audio.currentTime = 0;
+  const src = audioSrcForLang();
+  if (!audio.src.endsWith(src)) audio.setAttribute('src', src);
   render(_loc, parseInt(_slider.value, 10) / 60, _year);
   updateHash();
 }
@@ -1490,6 +1520,30 @@ function setupLangToggle() {
     _lang = _lang === 'en' ? 'pl' : 'en';
     applyLang();
   });
+}
+
+function setupInfoButton() {
+  const btn   = document.getElementById('btnInfo');
+  const panel = document.getElementById('about-panel');
+  const audio = document.getElementById('aboutAudio');
+  audio.setAttribute('src', audioSrcForLang());
+  function close() {
+    panel.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    audio.pause(); audio.currentTime = 0;
+  }
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (panel.classList.contains('open')) { close(); return; }
+    panel.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) close();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
 function setupThemeToggle() {
@@ -1531,6 +1585,7 @@ setupLocationControls();
 setupFolds();
 setupLangToggle();
 setupThemeToggle();
+setupInfoButton();
 
 // ── View toggle ───────────────────────────────────────────────────────────────
 document.getElementById('btnSky').addEventListener('click', () => {

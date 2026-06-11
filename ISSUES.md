@@ -31,6 +31,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 12 | Shareable URL state | ✅ Done | 4, 5, 7, 10 |
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
 | 14 | Pinned point in shareable URL | ✅ Done | 2, 12 |
+| 15 | Info button + analemma explanation & audio narration | ✅ Done | 1, 11 |
 
 ---
 
@@ -304,3 +305,32 @@ When the user **clicks/taps a point** on the analemma and the **sticky info pane
 - **Pin restoration after `setupInteraction()`** — looks up the stored `doy` in `_pts`, converts its SVG coordinates to screen coordinates via `getScreenCTM()`, then calls `showInfo` to display the pinned panel at the correct position; clears the pin state gracefully if the doy is not found in the current year's points
 - **`_showInfoFn`** — module-level reference assigned inside `setupInteraction` so the restoration block can invoke `showInfo` after setup is complete
 - **`test/issue14-pinned-point-url.mjs`**: 56 Playwright assertions covering no-pin on plain load, `pinday` written on click (DD_MM matches clicked day), unpin/empty-area/slider/view/location all clearing `pinday`, full round-trip restore (`pinday=11_04` → April 11), and five invalid-value cases ignored gracefully
+
+## Issue 15 — Info button + analemma explanation & audio narration
+
+**Status:** ✅ Done · **Depends on:** 1, 11 · **PRD:** FR‑19, §6
+
+A casual visitor sees the figure‑8 but has no in-page explanation of what an analemma actually is. This issue adds a small **ℹ button** in the header that opens a dropdown panel with a short bilingual description of the phenomenon and plays a prepared voice recording — one language-matched audio file per locale.
+
+- Add `#btnInfo` (ℹ) to the header, styled identically to the existing `#btnTheme` / `#btnLang` buttons.
+- On click, show `#about-panel` — a `position: fixed` dropdown anchored to the top-right, styled with the existing `--surface` / `--border` / `--text` / `--accent` theme tokens (works in both dark and light themes automatically). Close on: second click of ℹ, click outside the panel, or Esc key.
+- The panel contains a heading (`data-i18n="about.title"`), a paragraph (`data-i18n="about.body"`), and a native `<audio controls>` element.
+- **Audio:** `analemma-en.mp3` plays when the UI language is EN; `analemma-pl.mp3` plays when PL. Audio starts from the beginning each time the panel opens (no loop); closing the panel pauses and resets to 0 so reopening replays cleanly. An `audioSrcForLang()` helper keeps the `src` in sync when the language toggle fires.
+- **i18n strings** (`about.title` / `about.body`) added to both `en` and `pl` in the `STRINGS` dictionary; picked up automatically by the existing `applyLang()` loop.
+- The panel state is **not** encoded in the shareable URL (purely presentational).
+- `analemma-en.mp3` and `analemma-pl.mp3` are tracked in git alongside `index.html`.
+
+**Done when:** clicking ℹ opens the panel with localized text and starts the matching audio; closing it stops playback; switching language swaps the audio source; colors match both themes; zero JS errors; a new Playwright test (`test/issue15-info-audio.mjs`) passes.
+
+### Delivered
+
+- **`#btnInfo` (ℹ) header button** — added after `#btnLang`; shares the existing `#btnTheme` / `#btnLang` CSS selector so it inherits the same look and hover style; `aria-expanded` attribute managed in JS
+- **`#about-panel`** — `position: fixed; top: 2.7rem; right: 1rem` dropdown, `z-index: 30`; uses `--surface`, `--border`, `--text`, `--accent`, `--shadow` CSS custom properties so dark/light theming is automatic with no extra code; toggles via `.open` class
+- **`<audio id="aboutAudio" controls preload="none">`** — native browser controls; `preload="none"` keeps the 154 KB off the initial page load until first open
+- **`audioSrcForLang()` helper** — returns `'analemma-en.mp3'` or `'analemma-pl.mp3'` based on `_lang`; called on startup and after every language toggle to keep the `src` in sync
+- **`setupInfoButton()` function** — wires the open/close toggle, resets `audio.currentTime = 0` and calls `audio.play()` on open (click gesture satisfies browser autoplay policy), pauses and resets on close; closes on second click, Esc, and `pointerdown` outside the panel/button
+- **`applyLang()` extended** — after switching language, pauses audio, resets `currentTime`, and updates `src` via `audioSrcForLang()` so a stale-language clip never lingers
+- **i18n strings** — `about.title` and `about.body` added to both `en` and `pl` in the `STRINGS` dictionary; picked up automatically by the existing `[data-i18n]` / `applyLang()` loop (no changes to that loop required)
+- **`analemma-en.mp3` / `analemma-pl.mp3`** — both files tracked in git and referenced by relative `src` so they work via `file://` and on GitHub Pages
+- **`test/issue15-info-audio.mjs`** — 52 Playwright assertions across 13 test groups covering: initial hidden state, click-to-open EN content and audio src, second-click close, Esc close, outside-click close, reopen resets `currentTime`, EN→PL text + audio swap, PL→EN revert, language switch pauses audio, controls + preload attributes, chart unaffected, co-existence with pinned day panel, and dark/light background color difference
+- **`package.json`** — `"test:15"` script added; `"test"` all-in-one script extended with `issue15-info-audio.mjs`
