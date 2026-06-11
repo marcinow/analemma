@@ -4,7 +4,7 @@
     "playwright": "^1.60.0"
   },
   "scripts": {
-    "test": "node test/issue7-eot-toggle.mjs && node test/issue8-markers.mjs && node test/issue8a-fold-controls.mjs && node test/issue10-theme-toggle.mjs && node test/issue11-language-toggle.mjs && node test/issue12-shareable-url.mjs && node test/issue14-pinned-point-url.mjs && node test/issue15-info-audio.mjs",
+    "test": "node test/issue7-eot-toggle.mjs && node test/issue8-markers.mjs && node test/issue8a-fold-controls.mjs && node test/issue10-theme-toggle.mjs && node test/issue11-language-toggle.mjs && node test/issue12-shareable-url.mjs && node test/issue14-pinned-point-url.mjs && node test/issue15-info-audio.mjs && node test/issue16-share-url.mjs",
     "test:7":  "node test/issue7-eot-toggle.mjs",
     "test:8":  "node test/issue8-markers.mjs",
     "test:8a": "node test/issue8a-fold-controls.mjs",
@@ -12,6 +12,7 @@
     "test:11": "node test/issue11-language-toggle.mjs",
     "test:12": "node test/issue12-shareable-url.mjs",
     "test:14": "node test/issue14-pinned-point-url.mjs",
-    "test:15": "node test/issue15-info-audio.mjs"
+    "test:15": "node test/issue15-info-audio.mjs",
+    "test:16": "node test/issue16-share-url.mjs"
   }
 }

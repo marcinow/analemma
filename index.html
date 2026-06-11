@@ -180,7 +180,7 @@
       font-size: .68rem;
       color: var(--muted);
     }
-    #btnTheme, #btnLang, #btnInfo {
+    #btnTheme, #btnLang, #btnInfo, #btnShare {
       background: none;
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -192,7 +192,17 @@
       letter-spacing: .05em;
     }
     #btnTheme { margin-left: auto; font-size: .85rem; letter-spacing: 0; }
-    #btnTheme:hover, #btnLang:hover, #btnInfo:hover { border-color: var(--accent); color: var(--text); }
+    #btnTheme:hover, #btnLang:hover, #btnInfo:hover, #btnShare:hover { border-color: var(--accent); color: var(--text); }
+    #btnShare { position: relative; }
+    #share-toast {
+      display: none;
+      position: absolute; top: calc(100% + 6px); right: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 4px; padding: .2rem .5rem;
+      font-size: .7rem; white-space: nowrap;
+      color: var(--accent); z-index: 40;
+    }
+    #share-toast.visible { display: block; }
 
     #about-panel {
       display: none;
@@ -285,6 +295,7 @@
 <header>
   <h1>Analemma</h1>
   <span id="subtitle"></span>
+  <button id="btnShare" title="Copy shareable link">⎘<span id="share-toast"></span></button>
   <button id="btnTheme" title="Toggle theme">☀</button>
   <button id="btnLang" title="Language / Język">PL</button>
   <button id="btnInfo" title="About the analemma / O analemmie" aria-expanded="false">ℹ</button>
@@ -683,6 +694,7 @@ const STRINGS = {
     'drop.offline': '⚠ offline — bundled cities only',
     'subtitle.sky': 'Sky',          'subtitle.eot': 'EoT × Decl',
     'lang.toggle': 'PL',
+    'share.copied': 'Copied!',
     'about.title': 'What is an analemma?',
     'about.body': 'An analemma is the figure-8 the Sun traces across the sky when its position is recorded at the same time of day for a whole year. It comes from two effects: the tilt of Earth\'s axis (23.4°), which lifts the Sun higher in summer and lower in winter, and Earth\'s elliptical orbit, which makes the Sun run a little ahead of or behind clock time through the seasons (the equation of time). Together they trace the lopsided 8 you see here.',
   },
@@ -716,6 +728,7 @@ const STRINGS = {
     'drop.offline': '⚠ tryb offline — tylko wbudowane miasta',
     'subtitle.sky': 'Niebo',        'subtitle.eot': 'RCz × Dekl',
     'lang.toggle': 'EN',
+    'share.copied': 'Skopiowano!',
     'about.title': 'Czym jest analemma?',
     'about.body': 'Analemma to ósemka, którą Słońce zakreśla na niebie, gdy jego położenie zapisujemy każdego dnia o tej samej porze przez cały rok. Powstaje z dwóch przyczyn: nachylenia osi Ziemi (23,4°), przez które Słońce jest latem wyżej, a zimą niżej, oraz eliptycznej orbity Ziemi, przez którą Słońce wyprzedza czas zegarowy lub się względem niego spóźnia (równanie czasu). Razem tworzą tę asymetryczną ósemkę, którą tu widzisz.',
   }
@@ -1522,6 +1535,30 @@ function setupLangToggle() {
   });
 }
 
+function setupShareButton() {
+  const btn   = document.getElementById('btnShare');
+  const toast = document.getElementById('share-toast');
+  let toastTimer = null;
+  btn.addEventListener('click', async () => {
+    const url = location.href;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+    } catch (_) {}
+    toast.textContent = t('share.copied');
+    toast.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), 2000);
+  });
+}
+
 function setupInfoButton() {
   const btn   = document.getElementById('btnInfo');
   const panel = document.getElementById('about-panel');
@@ -1585,6 +1622,7 @@ setupLocationControls();
 setupFolds();
 setupLangToggle();
 setupThemeToggle();
+setupShareButton();
 setupInfoButton();
 
 // ── View toggle ───────────────────────────────────────────────────────────────

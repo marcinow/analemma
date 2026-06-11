@@ -32,6 +32,7 @@ Work is sliced as **tracer bullets**: each issue is an independently-grabbable *
 | 13 | Polish: touch, a11y, polar, attribution | 📋 Todo | 3 |
 | 14 | Pinned point in shareable URL | ✅ Done | 2, 12 |
 | 15 | Info button + analemma explanation & audio narration | ✅ Done | 1, 11 |
+| 16 | Copy / share URL button | ✅ Done | 12 |
 
 ---
 
@@ -334,3 +335,28 @@ A casual visitor sees the figure‑8 but has no in-page explanation of what an a
 - **`analemma-en.mp3` / `analemma-pl.mp3`** — both files tracked in git and referenced by relative `src` so they work via `file://` and on GitHub Pages
 - **`test/issue15-info-audio.mjs`** — 52 Playwright assertions across 13 test groups covering: initial hidden state, click-to-open EN content and audio src, second-click close, Esc close, outside-click close, reopen resets `currentTime`, EN→PL text + audio swap, PL→EN revert, language switch pauses audio, controls + preload attributes, chart unaffected, co-existence with pinned day panel, and dark/light background color difference
 - **`package.json`** — `"test:15"` script added; `"test"` all-in-one script extended with `issue15-info-audio.mjs`
+
+---
+
+## Issue 16 — Copy / share URL button
+
+**Status:** 📋 Todo · **Depends on:** 12 · **PRD:** FR‑16
+
+Sharing the current view requires the user to manually copy the URL from the address bar — awkward on mobile and not obvious on desktop. This issue adds a dedicated **copy-URL button** in the header that writes the shareable link to the clipboard and briefly confirms success with a transient message.
+
+- Add `#btnShare` (e.g. a link/chain icon or share icon) to the header, styled consistently with the existing `#btnTheme` / `#btnLang` / `#btnInfo` buttons.
+- On click/tap, call `navigator.clipboard.writeText(location.href)` (or fall back to `document.execCommand('copy')` for `file://` contexts where the Clipboard API may be unavailable).
+- Show a **temporary confirmation** — e.g. the button label/icon briefly changes to a checkmark or a small tooltip/badge reads "Copied!" — then reverts after ~2 s; no persistent UI change.
+- The button is always visible and works in both themes and both languages; the confirmation message is localized (`share.copied` i18n key in EN/PL).
+- No new state is serialized in the URL; the button simply copies the URL that Issue 12 already maintains.
+
+**Done when:** clicking the button copies the current URL to the clipboard; a localized confirmation appears briefly and disappears; works on desktop (`http://` / `https://`) and degrades gracefully when the Clipboard API is absent (e.g. `file://` without permissions); zero JS errors; a new Playwright test (`test/issue16-share-url.mjs`) passes.
+
+### Delivered
+
+- **`#btnShare` (⎘) header button** — added before `#btnTheme`; shares the existing `#btnTheme` / `#btnLang` / `#btnInfo` CSS selector so it inherits the same look and hover style
+- **`#share-toast`** — `<span>` nested inside `#btnShare`; `position: absolute; top: calc(100% + 6px); right: 0`; uses `--surface`, `--border`, `--accent` CSS custom properties for automatic dark/light theming; shown via `.visible` class, hidden by default
+- **`setupShareButton()` function** — calls `navigator.clipboard.writeText(location.href)` when available; falls back to a temporary `<textarea>` + `document.execCommand('copy')` for `file://` contexts where the Clipboard API may be restricted; sets `toast.textContent = t('share.copied')` and adds `.visible`, then clears it via `setTimeout` after 2 000 ms; `clearTimeout` on each call resets the timer on rapid clicks
+- **i18n strings** — `'share.copied': 'Copied!'` (EN) and `'share.copied': 'Skopiowano!'` (PL) added to the `STRINGS` dictionary; the toast text is resolved via `t('share.copied')` at click time so language switches are reflected immediately
+- **`test/issue16-share-url.mjs`** — 38 Playwright assertions across 12 test groups: button present and toast hidden on load; button visible alongside all other header buttons; EN toast "Copied!" appears on click; toast disappears after ~2 s; PL toast "Skopiowano!" after language switch; EN reverts on switch back; rapid clicks reset the timer; chart unaffected; share and info panel co-exist; toast empty before first click; z-index ≥ 10; toast visible in both dark and light themes
+- **`package.json`** — `"test:16"` script added; `"test"` all-in-one script extended with `issue16-share-url.mjs`
