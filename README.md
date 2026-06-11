@@ -14,9 +14,10 @@ https://marcinow.github.io/analemma/
 
 ## Implement with Sonnet model
 
-``` implement issue N and write down playwright tests for it to a separate file in test folder so it could be run later to detect regressions, update package.json file to be able to run tests individaully per issue and for all issues at once ```
-``` mark issue N as Done, also add what was delivered to the issue description in ISSUES.md file ```
+``` implement issue N and write down playwright tests for it to a separate file in test folder so it could be run later to detect regressions, update package.json file to be able to run tests individaully per issue and for all issues at once, when all tests passed mark the issue as Done, also add what was delivered to the issue description in ISSUES.md file ```
 - commit after each issue is implemeted (makes easy to navigate between implemenation phases or to discard incorrect implementation)
+
+``` Add Issue N+1: ... , update ISSUES.md, don't start the implementation yet ```
 
 ## Restart Claude session to refresh context (when tokens > 40% ?)
 With full context (52%) I was asked to verify new functionality (on web page) manually. With fresh context testing was done automatically with chromium/playwright and a display issue was found/fixed.
